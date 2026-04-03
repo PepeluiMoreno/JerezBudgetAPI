@@ -1,0 +1,133 @@
+{# ── Panel de reconciliación — se refresca solo con HTMX ─────────────────── #}
+
+{% set delta = reconciliation.global_delta %}
+{% set bal_pct = reconciliation.balance_pct %}
+
+<div class="card" style="border-top: 3px solid {% if reconciliation.is_balanced %}var(--accent){% elif bal_pct and bal_pct > 80 %}var(--warn){% else %}var(--danger){% endif %}; margin-bottom: 20px;">
+  <div class="card-header">
+    <span class="card-title">Reconciliación de modificaciones</span>
+    <span class="recon-badge {% if reconciliation.is_balanced %}balanced{% else %}unbalanced{% endif %}">
+      {% if reconciliation.is_balanced %}
+        ✓ Cuadrado
+      {% else %}
+        ⚠ Pendiente de cuadrar
+      {% endif %}
+    </span>
+  </div>
+  <div class="card-body">
+
+    {# ── Stats ──────────────────────────────────────────────────────────── #}
+    <div class="recon-panel">
+
+      <div class="recon-stat">
+        <div class="label">XLSX — Total modificaciones</div>
+        <div class="value">
+          {% if reconciliation.xlsx_total_modifications %}
+            {{ "{:,.0f}".format(reconciliation.xlsx_total_modifications) }} €
+          {% else %}
+            <span style="color: var(--text-muted); font-size: 14px;">Sin XLSX</span>
+          {% endif %}
+        </div>
+        <div class="sub">Suma columna Modificaciones · {{ reconciliation.snapshot_date or '—' }}</div>
+      </div>
+
+      <div class="recon-stat">
+        <div class="label">Expedientes — Total introducido</div>
+        <div class="value {% if reconciliation.is_balanced %}balanced{% elif bal_pct and bal_pct < 50 %}danger{% else %}warning{% endif %}">
+          {{ "{:,.0f}".format(reconciliation.entered_total_modifications) }} €
+        </div>
+        <div class="sub">
+          {{ reconciliation.num_modifications_approved }} aprobadas ·
+          {{ reconciliation.num_modifications_in_progress }} en trámite
+        </div>
+      </div>
+
+      <div class="recon-stat">
+        <div class="label">Delta (sin reconciliar)</div>
+        <div class="value {% if reconciliation.is_balanced %}balanced{% elif delta > 0 %}warning{% else %}danger{% endif %}">
+          {% if reconciliation.is_balanced %}
+            0 €
+          {% else %}
+            {{ "{:,.0f}".format(delta | abs) }} €
+          {% endif %}
+        </div>
+        <div class="sub">
+          {% if delta > 0 %}Faltan {{ "{:,.0f}".format(delta) }} € por registrar
+          {% elif delta < 0 %}Exceso de {{ "{:,.0f}".format(delta | abs) }} € registrado
+          {% else %}Cuadre perfecto
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="recon-stat">
+        <div class="label">Expedientes registrados</div>
+        <div class="value">{{ reconciliation.num_modifications_entered }}</div>
+        <div class="sub">
+          {{ reconciliation.num_modifications_approved }} aprobados /
+          {{ reconciliation.num_modifications_in_progress }} en trámite
+        </div>
+      </div>
+
+    </div>
+
+    {# ── Barra de progreso ───────────────────────────────────────────────── #}
+    {% if reconciliation.xlsx_total_modifications %}
+      {% set pct = [bal_pct or 0, 100] | min %}
+      <div style="margin-bottom: 12px;">
+        <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-bottom: 4px;">
+          <span>Reconciliación</span>
+          <span>{{ "{:.1f}".format(pct) }}%</span>
+        </div>
+        <div class="recon-bar">
+          <div class="recon-bar-fill {% if pct < 50 %}danger{% elif pct < 90 %}warning{% endif %}"
+               style="width: {{ pct }}%"></div>
+        </div>
+      </div>
+    {% endif %}
+
+    {# ── Desglose por capítulo ────────────────────────────────────────────── #}
+    {% if reconciliation.by_chapter %}
+    <details>
+      <summary style="cursor: pointer; font-size: 12px; color: var(--text-muted); padding: 4px 0; user-select: none;">
+        Ver desglose por capítulo
+      </summary>
+      <div style="margin-top: 12px;">
+        <div class="chapter-grid">
+          <div class="ch-head">Cap.</div>
+          <div class="ch-head">Nombre</div>
+          <div class="ch-head" style="text-align:right">XLSX</div>
+          <div class="ch-head" style="text-align:right">Introducido</div>
+          <div class="ch-head" style="text-align:right">Delta</div>
+          <div class="ch-head" style="text-align:center">Estado</div>
+
+          {% for ch in reconciliation.by_chapter %}
+          <div class="ch-cell"><code>{{ ch.chapter }}</code></div>
+          <div class="ch-cell" style="color: var(--text-dim);">{{ ch.chapter_name }}</div>
+          <div class="ch-cell right">{{ "{:,.0f}".format(ch.xlsx_modifications) }}</div>
+          <div class="ch-cell right">{{ "{:,.0f}".format(ch.entered_modifications) }}</div>
+          <div class="ch-cell right" style="color: {% if ch.is_balanced %}var(--accent){% else %}var(--warn){% endif %};">
+            {{ "{:,.0f}".format(ch.delta) }}
+          </div>
+          <div class="ch-cell center">
+            {% if ch.is_balanced %}
+              <span style="color: var(--accent); font-size: 14px;">✓</span>
+            {% else %}
+              <span style="color: var(--warn); font-size: 14px;">○</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </details>
+    {% endif %}
+
+    {# ── Aviso si no hay XLSX ─────────────────────────────────────────────── #}
+    {% if not reconciliation.snapshot_date %}
+    <div class="alert alert-warning" style="margin-top: 8px;">
+      No hay ningún XLSX de ejecución cargado para {{ year }}.
+      La reconciliación no puede completarse hasta que se ingiera al menos un snapshot.
+    </div>
+    {% endif %}
+
+  </div>
+</div>

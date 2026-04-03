@@ -1,0 +1,97 @@
+{% extends "admin/base.html" %}
+
+{% block title %}Modificaciones {{ year }} — JerezBudget Admin{% endblock %}
+
+{% block header %}
+<div class="page-header">
+  <div>
+    <div class="breadcrumb">presupuesto / {{ year }}</div>
+    <h1>
+      Modificaciones presupuestarias {{ year }}
+      {% if fiscal_year.is_extension %}
+        <span class="tag-prorroga" style="margin-left: 8px; font-size: 12px;">PRÓRROGA {{ fiscal_year.extended_from_year }}</span>
+      {% endif %}
+    </h1>
+  </div>
+  <div style="margin-left: auto; display: flex; gap: 8px; align-items: center;">
+    <span class="htmx-indicator"><span class="spinner"></span></span>
+    <button class="btn btn-primary"
+            hx-get="/admin/modificaciones/{{ year }}/form/new"
+            hx-target="#drawer-container"
+            hx-swap="innerHTML">
+      + Nueva modificación
+    </button>
+  </div>
+</div>
+{% endblock %}
+
+{% block content %}
+
+{# ── Panel de reconciliación ─────────────────────────────────────────────── #}
+<div id="reconciliation-container"
+     hx-get="/admin/modificaciones/{{ year }}/reconciliacion/panel"
+     hx-trigger="load, reconciliation-updated from:body"
+     hx-swap="innerHTML">
+  {% include "admin/partials/reconciliation_panel.html" %}
+</div>
+
+{# ── Tabla de modificaciones ─────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Expedientes de modificación</span>
+    <div style="display: flex; gap: 8px; align-items: center; font-size: 12px; color: var(--text-muted);">
+      {% if reconciliation.snapshot_date %}
+        Datos XLSX: <code>{{ reconciliation.snapshot_date }}</code>
+      {% else %}
+        <span style="color: var(--warn);">⚠ Sin XLSX cargado para {{ year }}</span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div id="modifications-table-container">
+    {% include "admin/partials/modifications_table.html" %}
+  </div>
+</div>
+
+{# ── Info fiscal year ────────────────────────────────────────────────────── #}
+<div class="card">
+  <div class="card-header">
+    <span class="card-title">Datos del ejercicio</span>
+  </div>
+  <div class="card-body">
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; font-size: 13px;">
+      <div>
+        <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Estado</div>
+        <code>{{ fiscal_year.status }}</code>
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Fecha aprobación</div>
+        {{ fiscal_year.initial_budget_date or '—' }}
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Días retraso aprobación</div>
+        {% if fiscal_year.approval_delay_days is not none %}
+          <span style="color: {% if fiscal_year.approval_delay_days > 0 %}var(--danger){% else %}var(--accent){% endif %}; font-family: var(--mono); font-weight: 700;">
+            {{ fiscal_year.approval_delay_days }} días
+          </span>
+        {% else %}—{% endif %}
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Publicación transparencia</div>
+        {{ fiscal_year.publication_date or '—' }}
+      </div>
+      <div>
+        <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Informe estabilidad</div>
+        {{ fiscal_year.stability_report_date or '—' }}
+      </div>
+      {% if fiscal_year.is_extension %}
+      <div>
+        <div style="color: var(--text-muted); font-size: 11px; text-transform: uppercase; margin-bottom: 4px;">Prórroga de</div>
+        <span style="color: var(--warn); font-weight: 700;">{{ fiscal_year.extended_from_year }}</span>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

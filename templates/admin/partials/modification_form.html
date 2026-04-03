@@ -1,0 +1,128 @@
+{# ── Formulario de modificación presupuestaria — se abre en drawer lateral ── #}
+<div class="drawer-backdrop">
+  <div class="drawer">
+
+    <div class="drawer-title">
+      {% if mod %}
+        Editar <code>{{ mod.ref }}</code>
+      {% else %}
+        Nueva modificación presupuestaria
+      {% endif %}
+      <button class="btn btn-ghost btn-sm"
+              onclick="document.getElementById('drawer-container').innerHTML=''">✕</button>
+    </div>
+
+    <form
+      {% if method == 'put' %}
+        hx-put="{{ action }}"
+        hx-vals='{"_method": "PUT"}'
+      {% else %}
+        hx-post="{{ action }}"
+      {% endif %}
+      hx-target="#modifications-table-container"
+      hx-swap="innerHTML"
+      hx-indicator=".htmx-indicator"
+      style="display: flex; flex-direction: column; gap: 16px; flex: 1;"
+    >
+
+      <div class="form-grid">
+
+        {# Referencia #}
+        <div class="form-group">
+          <label class="form-label">Referencia <span class="required">*</span></label>
+          <input type="text" name="ref" class="form-control"
+                 placeholder="T003/2026"
+                 value="{{ mod.ref if mod else '' }}"
+                 pattern="T\d{3}/\d{4}"
+                 title="Formato: T001/2026"
+                 required>
+          <small style="color: var(--text-muted); font-size: 11px;">Formato: T001/{{ year }}</small>
+        </div>
+
+        {# Tipo #}
+        <div class="form-group">
+          <label class="form-label">Tipo <span class="required">*</span></label>
+          <select name="mod_type" class="form-control" required>
+            {% for val, label in mod_type_options %}
+            <option value="{{ val }}" {% if mod and mod.mod_type == val %}selected{% endif %}>
+              {{ label }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# Estado #}
+        <div class="form-group">
+          <label class="form-label">Estado <span class="required">*</span></label>
+          <select name="status" class="form-control" required>
+            {% for val, label in status_options %}
+            <option value="{{ val }}" {% if mod and mod.status == val %}selected{% elif not mod and val == 'approved' %}selected{% endif %}>
+              {{ label }}
+            </option>
+            {% endfor %}
+          </select>
+        </div>
+
+        {# Importe #}
+        <div class="form-group">
+          <label class="form-label">Importe total (€)</label>
+          <input type="text" name="total_amount" class="form-control"
+                 placeholder="125.000,00"
+                 value="{{ '{:,.2f}'.format(mod.total_amount).replace(',', 'X').replace('.', ',').replace('X', '.') if mod and mod.total_amount else '' }}">
+          <small style="color: var(--text-muted); font-size: 11px;">Usar coma como separador decimal: 125.000,00</small>
+        </div>
+
+        {# Fecha resolución #}
+        <div class="form-group">
+          <label class="form-label">Fecha resolución</label>
+          <input type="date" name="resolution_date" class="form-control"
+                 value="{{ mod.resolution_date.isoformat() if mod and mod.resolution_date else '' }}">
+        </div>
+
+        {# Fecha publicación #}
+        <div class="form-group">
+          <label class="form-label">Fecha publicación transparencia</label>
+          <input type="date" name="publication_date" class="form-control"
+                 value="{{ mod.publication_date.isoformat() if mod and mod.publication_date else '' }}">
+        </div>
+
+        {# URL PDF #}
+        <div class="form-group full">
+          <label class="form-label">URL PDF (portal transparencia)</label>
+          <input type="url" name="source_url" class="form-control"
+                 placeholder="https://transparencia.jerez.es/..."
+                 value="{{ mod.source_url or '' }}">
+        </div>
+
+        {# Descripción #}
+        <div class="form-group full">
+          <label class="form-label">Descripción / Notas</label>
+          <textarea name="description" class="form-control"
+                    placeholder="Objeto de la modificación, áreas afectadas, observaciones...">{{ mod.description or '' }}</textarea>
+        </div>
+
+      </div>
+
+      {# ── Aviso reconciliación ─────────────────────────────────────────── #}
+      <div class="alert alert-info" style="font-size: 12px;">
+        💡 Al guardar, el panel de reconciliación se actualizará automáticamente
+        comparando el total acumulado con la columna <code>Modificaciones</code>
+        del XLSX de ejecución más reciente.
+      </div>
+
+      {# ── Botones ──────────────────────────────────────────────────────── #}
+      <div class="form-actions">
+        <span class="htmx-indicator"><span class="spinner"></span></span>
+        <button type="button"
+                class="btn btn-ghost"
+                onclick="document.getElementById('drawer-container').innerHTML=''">
+          Cancelar
+        </button>
+        <button type="submit" class="btn btn-primary">
+          {% if mod %}Guardar cambios{% else %}Crear modificación{% endif %}
+        </button>
+      </div>
+
+    </form>
+  </div>
+</div>

@@ -1,0 +1,131 @@
+{# ── Tabla de modificaciones — partial refrescado por HTMX ───────────────── #}
+{% if modifications %}
+<table class="data-table">
+  <thead>
+    <tr>
+      <th>Referencia</th>
+      <th>Tipo</th>
+      <th>Estado</th>
+      <th>Fecha resolución</th>
+      <th>Fecha publicación</th>
+      <th class="amount">Importe (€)</th>
+      <th>Descripción</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for mod in modifications %}
+    <tr id="mod-row-{{ mod.id }}">
+
+      <td>
+        <code class="mono">{{ mod.ref }}</code>
+        {% if mod.source_url %}
+          <a href="{{ mod.source_url }}" target="_blank" style="font-size: 11px; margin-left: 4px;" title="Ver PDF">↗</a>
+        {% endif %}
+      </td>
+
+      <td>
+        {% if mod.mod_type == 'transfer' %}
+          <span class="badge badge-transfer">Transferencia</span>
+        {% elif mod.mod_type == 'generate' %}
+          <span class="badge badge-generate">Generación</span>
+        {% elif mod.mod_type == 'carry_forward' %}
+          <span class="badge badge-carry">Remanentes</span>
+        {% elif mod.mod_type == 'supplementary' %}
+          <span class="badge badge-transfer">Suplemento</span>
+        {% elif mod.mod_type == 'credit_reduction' %}
+          <span class="badge badge-rejected">Minoración</span>
+        {% else %}
+          <span class="badge">{{ mod.mod_type }}</span>
+        {% endif %}
+      </td>
+
+      <td>
+        {% if mod.status == 'approved' %}
+          <span class="badge badge-approved">Aprobada</span>
+        {% elif mod.status == 'in_progress' %}
+          <span class="badge badge-progress">En trámite</span>
+        {% else %}
+          <span class="badge badge-rejected">Rechazada</span>
+        {% endif %}
+      </td>
+
+      <td style="white-space: nowrap; color: var(--text-dim);">
+        {{ mod.resolution_date.strftime('%d/%m/%Y') if mod.resolution_date else '—' }}
+      </td>
+
+      <td style="white-space: nowrap; color: var(--text-dim);">
+        {{ mod.publication_date.strftime('%d/%m/%Y') if mod.publication_date else '—' }}
+      </td>
+
+      <td class="amount">
+        {% if mod.total_amount %}
+          <span style="font-weight: 600; color: {% if mod.mod_type == 'credit_reduction' %}var(--danger){% else %}var(--text){% endif %};">
+            {% if mod.mod_type == 'credit_reduction' %}-{% endif %}{{ "{:,.2f}".format(mod.total_amount | abs) }}
+          </span>
+        {% else %}
+          <span style="color: var(--text-muted);">—</span>
+        {% endif %}
+      </td>
+
+      <td style="color: var(--text-dim); max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"
+          title="{{ mod.description or '' }}">
+        {{ (mod.description or '')[:60] }}{% if mod.description and mod.description|length > 60 %}…{% endif %}
+      </td>
+
+      <td style="white-space: nowrap;">
+        <button class="btn btn-ghost btn-sm btn-icon"
+                title="Editar"
+                hx-get="/admin/modificaciones/{{ year }}/{{ mod.id }}/edit"
+                hx-target="#drawer-container"
+                hx-swap="innerHTML">✏</button>
+        <button class="btn btn-danger btn-sm btn-icon"
+                title="Eliminar"
+                hx-delete="/admin/modificaciones/{{ year }}/{{ mod.id }}"
+                hx-target="#modifications-table-container"
+                hx-swap="innerHTML"
+                hx-confirm="¿Eliminar {{ mod.ref }}? Esta acción no se puede deshacer.">✕</button>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+
+  <tfoot>
+    <tr>
+      <td colspan="5" style="padding: 10px 12px; color: var(--text-muted); font-size: 12px;">
+        {{ modifications | length }} expediente{% if modifications | length != 1 %}s{% endif %}
+      </td>
+      <td class="amount" style="padding: 10px 12px; font-weight: 700;">
+        {% set approved_total = namespace(val=0) %}
+        {% for mod in modifications %}
+          {% if mod.status == 'approved' and mod.total_amount %}
+            {% if mod.mod_type == 'credit_reduction' %}
+              {% set approved_total.val = approved_total.val - mod.total_amount %}
+            {% else %}
+              {% set approved_total.val = approved_total.val + mod.total_amount %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+        {{ "{:,.2f}".format(approved_total.val) }} €
+      </td>
+      <td colspan="2" style="padding: 10px 12px; font-size: 11px; color: var(--text-muted);">
+        solo aprobadas
+      </td>
+    </tr>
+  </tfoot>
+</table>
+
+{% else %}
+<div class="empty-state">
+  <div class="icon">📋</div>
+  <p>No hay modificaciones presupuestarias registradas para {{ year }}.</p>
+  <p style="margin-top: 8px;">
+    <button class="btn btn-primary"
+            hx-get="/admin/modificaciones/{{ year }}/form/new"
+            hx-target="#drawer-container"
+            hx-swap="innerHTML">
+      + Introducir primera modificación
+    </button>
+  </p>
+</div>
+{% endif %}

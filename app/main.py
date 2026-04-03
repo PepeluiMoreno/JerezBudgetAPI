@@ -10,9 +10,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from fastapi.staticfiles import StaticFiles
+
 from app.config import get_settings
 from app.db import engine
 from api.health import router as health_router
+from api.admin import router as admin_router
 from graphql.schema import create_graphql_router
 
 settings = get_settings()
@@ -65,8 +68,12 @@ def create_app() -> FastAPI:
         allow_headers=["*"],
     )
 
+    # ── Static files ──────────────────────────────────────────────────────────
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(health_router)
+    app.include_router(admin_router)
 
     # GraphQL — accesible en /graphql (con GraphiQL en modo dev)
     graphql_router = create_graphql_router()
@@ -79,7 +86,7 @@ def create_app() -> FastAPI:
             "app": settings.app_name,
             "version": settings.app_version,
             "graphql": "/graphql",
-            "graphiql": "/graphql",
+            "admin": "/admin",
             "health": "/health",
             "docs": "/docs",
         })
