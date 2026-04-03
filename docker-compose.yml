@@ -1,0 +1,125 @@
+services:
+
+  # ── Base de datos ───────────────────────────────────────────────
+  db:
+    image: postgres:16-alpine
+    container_name: jerezbudget_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-jerezbudget}
+      POSTGRES_USER: ${DB_USER:-jerezbudget}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"                 # sólo dev — quitar en producción
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-jerezbudget} -d ${DB_NAME:-jerezbudget}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # ── Broker / Cache ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: jerezbudget_redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 5s
+      retries: 5
+
+  # ── Almacenamiento de ficheros fuente (S3-compatible) ───────────
+  minio:
+    image: minio/minio:latest
+    container_name: jerezbudget_minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      retries: 5
+
+  # ── API GraphQL ─────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      target: runtime
+    container_name: jerezbudget_api
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-jerezbudget}:${DB_PASSWORD}@db/${DB_NAME:-jerezbudget}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app                      # hot-reload en dev; quitar en producción
+
+  # ── Worker Celery (ETL + métricas) ──────────────────────────────
+  worker:
+    build:
+      context: .
+      target: runtime
+    container_name: jerezbudget_worker
+    restart: unless-stopped
+    command: celery -A tasks.celery_app worker --loglevel=info -Q etl,metrics -c 4
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-jerezbudget}:${DB_PASSWORD}@db/${DB_NAME:-jerezbudget}
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Celery Beat (scheduler) ─────────────────────────────────────
+  beat:
+    build:
+      context: .
+      target: runtime
+    container_name: jerezbudget_beat
+    restart: unless-stopped
+    command: celery -A tasks.celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
+    env_file: .env
+    environment:
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
+    depends_on:
+      - redis
+
+  # ── Flower (monitor Celery) ─────────────────────────────────────
+  flower:
+    image: mher/flower:2.0
+    container_name: jerezbudget_flower
+    restart: unless-stopped
+    command: celery flower --broker=redis://:${REDIS_PASSWORD}@redis:6379/0 --port=5555
+    ports:
+      - "5555:5555"
+    depends_on:
+      - redis
+
+volumes:
+  pg_data:
+  redis_data:
+  minio_data:
