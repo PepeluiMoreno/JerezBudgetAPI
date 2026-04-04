@@ -13,8 +13,18 @@ from models.budget import (
     OrganicClassification,
     RigorMetrics,
 )
+from models.national import (
+    Municipality,
+    MunicipalPopulation,
+    MunicipalBudget,
+    MunicipalBudgetChapter,
+    MunicipalBudgetProgram,
+    PeerGroup,
+    PeerGroupMember,
+)
 
 __all__ = [
+    # Capa 1 — JerezBudget
     "Base",
     "FiscalYear",
     "EconomicClassification",
@@ -24,4 +34,12 @@ __all__ = [
     "BudgetLine",
     "BudgetModification",
     "RigorMetrics",
+    # Capa 2 — Nacional
+    "Municipality",
+    "MunicipalPopulation",
+    "MunicipalBudget",
+    "MunicipalBudgetChapter",
+    "MunicipalBudgetProgram",
+    "PeerGroup",
+    "PeerGroupMember",
 ]
