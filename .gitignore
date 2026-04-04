@@ -19,6 +19,8 @@ htmlcov/
 *.swp
 .DS_Store
 Thumbs.db
-alembic/versions/*.py
+
 !alembic/versions/.gitkeep
 downloads/
+
+# Migraciones Alembic SÍ se commitean

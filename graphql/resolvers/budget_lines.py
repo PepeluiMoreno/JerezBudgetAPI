@@ -1,10 +1,13 @@
 """
-Resolvers para consultas de líneas presupuestarias.
-Soporta filtros por capítulo, programa, sección, dirección, y rango de tasa de ejecución.
-La paginación es offset-based para compatibilidad con OpenBudgets viewer.
+Resolver para líneas presupuestarias.
+
+Paginación offset-based compatible con OpenBudgets viewer.
+Filtros aplicados a nivel SQL siempre que sea posible para eficiencia.
+El filtro por tasa de ejecución se aplica en Python (campo calculado).
 """
 from __future__ import annotations
 
+import strawberry
 from datetime import date
 from decimal import Decimal
 from typing import Optional
@@ -23,16 +26,17 @@ from models.budget import (
     OrganicClassification,
 )
 
+_UNSET = strawberry.UNSET
+
 
 def _map(line: BudgetLine) -> BudgetLineType:
-    eco = line.economic
+    eco      = line.economic
     func_cls = line.functional
-    org = line.organic
+    org      = line.organic
     return BudgetLineType(
         id=line.id,
         snapshot_id=line.snapshot_id,
         description=line.description,
-        # Clasificaciones desnormalizadas
         economic_code=eco.code if eco else "",
         economic_description=eco.description if eco else "",
         chapter=eco.chapter if eco else "",
@@ -41,7 +45,6 @@ def _map(line: BudgetLine) -> BudgetLineType:
         program_description=func_cls.description if func_cls else None,
         organic_code=org.code if org else None,
         section=org.section if org else None,
-        # Gastos
         initial_credits=line.initial_credits,
         modifications=line.modifications,
         final_credits=line.final_credits,
@@ -49,13 +52,11 @@ def _map(line: BudgetLine) -> BudgetLineType:
         recognized_obligations=line.recognized_obligations,
         payments_made=line.payments_made,
         pending_payment=line.pending_payment,
-        # Ingresos
         initial_forecast=line.initial_forecast,
         final_forecast=line.final_forecast,
         recognized_rights=line.recognized_rights,
         net_collection=line.net_collection,
         pending_collection=line.pending_collection,
-        # Calculadas
         execution_rate=line.execution_rate,
         revenue_execution_rate=line.revenue_execution_rate,
         deviation_amount=line.deviation_amount,
@@ -63,25 +64,37 @@ def _map(line: BudgetLine) -> BudgetLineType:
     )
 
 
-async def _get_latest_snapshot_id(
+async def _latest_snapshot_id(
     db: AsyncSession,
     fiscal_year: int,
-    snapshot_date: Optional[date] = None,
+    snapshot_date: Optional[date],
 ) -> Optional[int]:
-    """Devuelve el ID del snapshot más reciente (o el de una fecha concreta)."""
-    query = (
+    q = (
         select(BudgetSnapshot.id)
         .join(FiscalYear, BudgetSnapshot.fiscal_year_id == FiscalYear.id)
         .where(FiscalYear.year == fiscal_year)
         .where(BudgetSnapshot.phase == "executed")
     )
     if snapshot_date:
-        query = query.where(BudgetSnapshot.snapshot_date == snapshot_date)
+        q = q.where(BudgetSnapshot.snapshot_date == snapshot_date)
     else:
-        query = query.order_by(BudgetSnapshot.snapshot_date.desc())
-
-    result = await db.execute(query.limit(1))
+        q = q.order_by(BudgetSnapshot.snapshot_date.desc())
+    result = await db.execute(q.limit(1))
     return result.scalar_one_or_none()
+
+
+def _apply_sql_filters(q, filters: Optional[BudgetLineFilter]):
+    if not filters:
+        return q
+    if filters.chapter is not _UNSET and filters.chapter:
+        q = q.where(EconomicClassification.chapter == filters.chapter)
+    if filters.direction is not _UNSET and filters.direction:
+        q = q.where(EconomicClassification.direction == filters.direction)
+    if filters.functional_code is not _UNSET and filters.functional_code:
+        q = q.where(FunctionalClassification.code.startswith(filters.functional_code))
+    if filters.organic_code is not _UNSET and filters.organic_code:
+        q = q.where(OrganicClassification.code.startswith(filters.organic_code))
+    return q
 
 
 async def resolve_budget_lines(
@@ -91,64 +104,48 @@ async def resolve_budget_lines(
     page: int = 1,
     page_size: int = 200,
 ) -> BudgetLinePage:
-    """
-    Devuelve líneas presupuestarias paginadas con filtros opcionales.
-    Por defecto usa el snapshot de ejecución más reciente disponible.
-    """
-    snapshot_date = None
-    if filters and filters.snapshot_date is not strawberry.UNSET:
-        snapshot_date = filters.snapshot_date
+    snap_date = None
+    if filters and filters.snapshot_date is not _UNSET:
+        snap_date = filters.snapshot_date
 
-    snapshot_id = await _get_latest_snapshot_id(db, fiscal_year, snapshot_date)
+    snapshot_id = await _latest_snapshot_id(db, fiscal_year, snap_date)
     if snapshot_id is None:
         return BudgetLinePage(items=[], total=0, page=page, page_size=page_size, has_next=False)
 
-    # Base query con eager loading de clasificaciones
-    base_q = (
+    base = (
         select(BudgetLine)
         .options(
             joinedload(BudgetLine.economic),
             joinedload(BudgetLine.functional),
             joinedload(BudgetLine.organic),
         )
+        .join(BudgetLine.economic)
+        .outerjoin(BudgetLine.functional)
+        .outerjoin(BudgetLine.organic)
         .where(BudgetLine.snapshot_id == snapshot_id)
     )
+    base = _apply_sql_filters(base, filters)
 
-    # Aplicar filtros
-    if filters:
-        if filters.chapter is not strawberry.UNSET and filters.chapter:
-            base_q = base_q.join(BudgetLine.economic).where(
-                EconomicClassification.chapter == filters.chapter
-            )
-        if filters.direction is not strawberry.UNSET and filters.direction:
-            base_q = base_q.join(BudgetLine.economic).where(
-                EconomicClassification.direction == filters.direction
-            )
-        if filters.functional_code is not strawberry.UNSET and filters.functional_code:
-            base_q = base_q.join(BudgetLine.functional).where(
-                FunctionalClassification.code.startswith(filters.functional_code)
-            )
-        if filters.organic_code is not strawberry.UNSET and filters.organic_code:
-            base_q = base_q.join(BudgetLine.organic).where(
-                OrganicClassification.code.startswith(filters.organic_code)
-            )
-
-    # Contar total
-    count_q = select(func.count()).select_from(base_q.subquery())
+    count_q = select(func.count()).select_from(
+        base.with_only_columns(BudgetLine.id).subquery()
+    )
     total = await db.scalar(count_q) or 0
 
-    # Paginación
     offset = (page - 1) * page_size
-    result = await db.execute(base_q.offset(offset).limit(page_size))
-    lines = result.unique().scalars().all()
+    rows   = await db.execute(base.offset(offset).limit(page_size))
+    lines  = rows.unique().scalars().all()
 
-    # Filtro post-SQL por tasa de ejecución (calculada en Python)
     items = [_map(line) for line in lines]
+
     if filters:
-        if filters.min_execution_rate is not strawberry.UNSET:
-            items = [i for i in items if i.execution_rate is not None and i.execution_rate >= filters.min_execution_rate]
-        if filters.max_execution_rate is not strawberry.UNSET:
-            items = [i for i in items if i.execution_rate is not None and i.execution_rate <= filters.max_execution_rate]
+        if filters.min_execution_rate is not _UNSET and filters.min_execution_rate is not None:
+            items = [i for i in items
+                     if i.execution_rate is not None
+                     and i.execution_rate >= filters.min_execution_rate]
+        if filters.max_execution_rate is not _UNSET and filters.max_execution_rate is not None:
+            items = [i for i in items
+                     if i.execution_rate is not None
+                     and i.execution_rate <= filters.max_execution_rate]
 
     return BudgetLinePage(
         items=items,
@@ -157,7 +154,3 @@ async def resolve_budget_lines(
         page_size=page_size,
         has_next=(offset + page_size) < total,
     )
-
-
-# Importación tardía para evitar circular
-import strawberry
