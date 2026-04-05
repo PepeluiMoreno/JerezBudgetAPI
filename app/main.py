@@ -16,6 +16,7 @@ from app.config import get_settings
 from app.db import engine
 from api.health import router as health_router
 from api.admin import router as admin_router
+from api.olap.router import router as olap_router
 from graphql.schema import create_graphql_router
 
 settings = get_settings()
@@ -74,6 +75,7 @@ def create_app() -> FastAPI:
     # ── Routers ───────────────────────────────────────────────────────────────
     app.include_router(health_router)
     app.include_router(admin_router)
+    app.include_router(olap_router)
 
     # GraphQL — accesible en /graphql (con GraphiQL en modo dev)
     graphql_router = create_graphql_router()
@@ -87,6 +89,7 @@ def create_app() -> FastAPI:
             "version": settings.app_version,
             "graphql": "/graphql",
             "admin": "/admin",
+            "olap": "/api/3/cubes/",
             "health": "/health",
             "docs": "/docs",
         })
