@@ -21,10 +21,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/app/.venv/bin:$PATH"
 
-# Dependencias del sistema necesarias para pdfplumber y lxml
+# Dependencias del sistema necesarias para pdfplumber, lxml y mdbtools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     poppler-utils \
+    mdbtools \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app

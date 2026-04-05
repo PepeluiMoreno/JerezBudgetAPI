@@ -13,7 +13,7 @@ celery_app = Celery(
     "jerezbudget",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["tasks.etl_tasks"],
+    include=["tasks.etl_tasks", "tasks.conprel_tasks"],
 )
 
 celery_app.conf.update(
@@ -34,18 +34,36 @@ celery_app.conf.update(
 
     # Rutas de colas
     task_routes={
-        "tasks.etl_tasks.discover_and_ingest": {"queue": "etl"},
-        "tasks.etl_tasks.ingest_file":         {"queue": "etl"},
-        "tasks.etl_tasks.compute_metrics":     {"queue": "metrics"},
+        # Capa 1 — JerezBudget
+        "tasks.etl_tasks.discover_and_ingest":            {"queue": "etl"},
+        "tasks.etl_tasks.ingest_file":                    {"queue": "etl"},
+        "tasks.etl_tasks.compute_metrics":                {"queue": "metrics"},
+        # Capa 2 — CONPREL + INE
+        "tasks.conprel_tasks.seed_ine_population":        {"queue": "etl"},
+        "tasks.conprel_tasks.ingest_conprel_year":        {"queue": "etl"},
+        "tasks.conprel_tasks.rebuild_peer_groups":        {"queue": "etl"},
+        "tasks.conprel_tasks.load_historical_conprel":    {"queue": "etl"},
     },
 
     # Scheduler periódico
     beat_schedule={
-        "daily-discovery": {
+        # Capa 1: descubrir nuevos XLSX de Jerez cada día
+        "daily-jerez-discovery": {
             "task": "tasks.etl_tasks.discover_and_ingest",
             "schedule": crontab(hour=7, minute=30),
-            "args": [],
-            "kwargs": {"years": None},   # None = todos los años
+            "kwargs": {"years": None},
+        },
+        # Capa 2: refrescar liquidación CONPREL del año anterior (enero)
+        "annual-conprel-liquidation": {
+            "task": "tasks.conprel_tasks.ingest_conprel_year",
+            "schedule": crontab(month_of_year=1, day_of_month=20, hour=6, minute=0),
+            "kwargs": {},   # year se calcula dinámicamente en la task
+        },
+        # Capa 2: refrescar padrón INE (julio — el INE publica en verano)
+        "annual-ine-population": {
+            "task": "tasks.conprel_tasks.seed_ine_population",
+            "schedule": crontab(month_of_year=7, day_of_month=15, hour=5, minute=0),
+            "kwargs": {},
         },
     },
 )
