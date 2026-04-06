@@ -1,0 +1,93 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - ".github/**"
+
+jobs:
+  deploy:
+    name: Deploy to OptiPlex-790
+    runs-on: ubuntu-latest
+    needs: []   # se puede añadir dependencia del job CI si se desea
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # necesario para el bundle
+
+      - name: Create git bundle
+        run: |
+          git bundle create jerezbudget-deploy.bundle --all
+          echo "Bundle size: $(du -sh jerezbudget-deploy.bundle | cut -f1)"
+
+      - name: Transfer bundle to server via SCP
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          source: "jerezbudget-deploy.bundle"
+          target: "~/jerezbudget-bundles/"
+
+      - name: Deploy on server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.DEPLOY_HOST }}
+          username: ${{ secrets.DEPLOY_USER }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            set -e
+            BUNDLE=~/jerezbudget-bundles/jerezbudget-deploy.bundle
+            REPO=~/jerezbudget-api
+
+            # Si el repo no existe, clonar desde el bundle
+            if [ ! -d "$REPO" ]; then
+              git clone "$BUNDLE" "$REPO"
+              echo "✅ Repositorio clonado"
+            else
+              # Si existe, hacer pull desde el bundle
+              cd "$REPO"
+              git remote add bundle "$BUNDLE" 2>/dev/null || \
+                git remote set-url bundle "$BUNDLE"
+              git fetch bundle
+              git merge --ff-only bundle/main
+              echo "✅ Repositorio actualizado"
+            fi
+
+            cd "$REPO"
+
+            # Asegurar que .env existe
+            if [ ! -f .env ]; then
+              echo "ERROR: .env no encontrado en $REPO"
+              exit 1
+            fi
+
+            # Rebuild y redeploy
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml pull --quiet
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml build --quiet
+
+            # Migraciones antes de reiniciar
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              run --rm api alembic upgrade head
+
+            # Reiniciar servicios uno a uno (zero-downtime aproximado)
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              up -d --no-deps api
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              up -d --no-deps dashboard
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml \
+              up -d --no-deps worker beat
+
+            # Limpiar imágenes antiguas
+            docker image prune -f --filter "until=24h" 2>/dev/null || true
+
+            echo "✅ Deploy completado"
+            docker compose -f docker-compose.yml -f docker-compose.prod.yml ps
+
+# Secrets necesarios en GitHub → Settings → Secrets:
+#   DEPLOY_HOST     → IP o hostname del OptiPlex-790
+#   DEPLOY_USER     → jose
+#   DEPLOY_SSH_KEY  → clave privada SSH (sin passphrase)
