@@ -108,6 +108,25 @@ services:
     depends_on:
       - redis
 
+  # ── Dashboard Dash (Capa 3 — Visualización) ─────────────────────────────────
+  dashboard:
+    build:
+      context: .
+      target: runtime
+    container_name: jerezbudget_dashboard
+    restart: unless-stopped
+    command: python dashboard/app.py
+    env_file: .env
+    environment:
+      BABBAGE_BASE_URL: http://api:8000/api/3
+      DASH_HOST: 0.0.0.0
+      DASH_PORT: "8050"
+      DASH_DEBUG: "false"
+    ports:
+      - "8050:8050"
+    depends_on:
+      - api
+
   # ── Flower (monitor Celery) ─────────────────────────────────────
   flower:
     image: mher/flower:2.0

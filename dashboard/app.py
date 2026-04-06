@@ -1,0 +1,178 @@
+"""
+Aplicación principal Dash — JerezBudget Dashboard.
+
+Estructura multi-página con Dash Pages:
+  /rigor        → Vista 1: Score de rigor de Jerez
+  /comparativa  → Vista 2: Comparativa intercidades
+  /explorador   → Vista 3: Explorador libre
+
+Consumo de la API babbage en http://api:8000/api/3
+Configurable via variable de entorno BABBAGE_BASE_URL.
+"""
+from __future__ import annotations
+
+import dash
+from dash import dcc, html, Input, Output, callback
+
+from dashboard.config import COLORS, DASH_HOST, DASH_PORT, DASH_DEBUG, DASH_PREFIX
+
+# Importar páginas para su registro
+import dashboard.pages.rigor
+import dashboard.pages.comparison
+import dashboard.pages.explorer
+
+# ── App ───────────────────────────────────────────────────────────────────────
+
+app = dash.Dash(
+    __name__,
+    use_pages=True,
+    suppress_callback_exceptions=True,
+    url_base_pathname=DASH_PREFIX + "/" if DASH_PREFIX else "/",
+    meta_tags=[
+        {"name": "viewport", "content": "width=device-width, initial-scale=1"},
+        {"name": "description", "content": "Dashboard de rigor presupuestario municipal"},
+    ],
+    title="JerezBudget — Rigor Presupuestario",
+)
+server = app.server   # WSGI server para Gunicorn
+
+
+# ── Layout principal ──────────────────────────────────────────────────────────
+
+app.layout = html.Div([
+
+    # ── Navbar ────────────────────────────────────────────────────────────────
+    html.Nav([
+        # Logo / título
+        html.Div([
+            html.A([
+                html.Span("Jerez", style={
+                    "color": COLORS["jerez"], "fontWeight": 900,
+                    "fontSize": 15, "letterSpacing": "-0.02em",
+                }),
+                html.Span("Budget", style={
+                    "color": "#fff", "fontWeight": 700,
+                    "fontSize": 15, "letterSpacing": "-0.02em",
+                }),
+            ], href="/rigor", style={"textDecoration": "none"}),
+            html.Span("· Rigor Presupuestario Municipal", style={
+                "color": "#6B7280", "fontSize": 12, "marginLeft": 8,
+            }),
+        ], style={"display": "flex", "alignItems": "center"}),
+
+        # Navegación
+        html.Div([
+            _nav_link("Rigor",        "/rigor",       "📊"),
+            _nav_link("Comparativa",  "/comparativa", "🏙️"),
+            _nav_link("Explorador",   "/explorador",  "🔍"),
+        ], style={"display": "flex", "gap": 4}),
+
+        # Links externos
+        html.Div([
+            html.A("GraphiQL", href="/graphql", target="_blank", style=_ext_link_style()),
+            html.A("API OLAP",  href="/api/3/cubes/", target="_blank", style=_ext_link_style()),
+            html.A("GitHub",    href="https://github.com/PepeluiMoreno/JerezBudgetAPI",
+                   target="_blank", style=_ext_link_style()),
+        ], style={"display": "flex", "gap": 8, "marginLeft": "auto",
+                  "alignItems": "center"}),
+
+    ], style={
+        "display": "flex", "alignItems": "center",
+        "padding": "0 28px",
+        "height": 52,
+        "background": "#111827",
+        "borderBottom": f"2px solid {COLORS['jerez']}",
+        "position": "sticky", "top": 0, "zIndex": 100,
+    }),
+
+    # ── Contenido de la página activa ─────────────────────────────────────────
+    dash.page_container,
+
+    # ── Footer ────────────────────────────────────────────────────────────────
+    html.Footer([
+        html.Span("JerezBudget API · ", style={"color": "#6B7280", "fontSize": 11}),
+        html.A("github.com/PepeluiMoreno/JerezBudgetAPI",
+               href="https://github.com/PepeluiMoreno/JerezBudgetAPI",
+               target="_blank",
+               style={"color": COLORS["jerez"], "fontSize": 11}),
+        html.Span(" · Datos: CONPREL (Ministerio de Hacienda) + transparencia.jerez.es",
+                  style={"color": "#6B7280", "fontSize": 11}),
+    ], style={
+        "padding": "12px 28px",
+        "background": "#111827",
+        "borderTop": f"1px solid #1F2937",
+        "textAlign": "center",
+        "marginTop": "auto",
+    }),
+
+], style={
+    "minHeight": "100vh",
+    "display": "flex",
+    "flexDirection": "column",
+    "fontFamily": "-apple-system, 'Helvetica Neue', sans-serif",
+    "background": COLORS["bg"],
+})
+
+
+# ── Highlight de la pestaña activa ────────────────────────────────────────────
+
+@callback(
+    Output("nav-rigor",       "style"),
+    Output("nav-comparativa", "style"),
+    Output("nav-explorador",  "style"),
+    Input("_pages_location",  "pathname"),
+)
+def highlight_active_nav(pathname: str):
+    active = {
+        "display": "flex", "alignItems": "center", "gap": 5,
+        "padding": "6px 12px", "borderRadius": 4,
+        "color": COLORS["jerez"],
+        "background": COLORS["jerez"] + "22",
+        "textDecoration": "none", "fontSize": 13, "fontWeight": 700,
+    }
+    inactive = {
+        "display": "flex", "alignItems": "center", "gap": 5,
+        "padding": "6px 12px", "borderRadius": 4,
+        "color": "#9CA3AF",
+        "textDecoration": "none", "fontSize": 13, "fontWeight": 400,
+    }
+    paths = ["/rigor", "/comparativa", "/explorador"]
+    styles = []
+    for p in paths:
+        styles.append(active if (pathname or "").startswith(p) else inactive)
+    return styles
+
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _nav_link(label: str, href: str, icon: str) -> html.A:
+    slug = label.lower()
+    return html.A(
+        [icon, " ", label],
+        id=f"nav-{slug}",
+        href=href,
+        style={
+            "display": "flex", "alignItems": "center", "gap": 5,
+            "padding": "6px 12px", "borderRadius": 4,
+            "color": "#9CA3AF",
+            "textDecoration": "none", "fontSize": 13,
+        }
+    )
+
+
+def _ext_link_style() -> dict:
+    return {
+        "color": "#6B7280", "fontSize": 11,
+        "textDecoration": "none", "padding": "4px 8px",
+        "border": "1px solid #374151", "borderRadius": 3,
+    }
+
+
+# ── Entrypoint ────────────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    app.run(
+        host=DASH_HOST,
+        port=DASH_PORT,
+        debug=DASH_DEBUG,
+    )
