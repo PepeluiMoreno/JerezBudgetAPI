@@ -40,7 +40,7 @@ services:
 
   api:
     restart: always
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    command: python -m uvicorn app.main:app --host 0.0.0.0 --port 8015 --workers 4
     ports: []
     volumes: []       # sin hot-reload en producción
     labels:
@@ -49,7 +49,7 @@ services:
       - "traefik.http.routers.api.rule=Host(`budget.${DOMAIN}`)"
       - "traefik.http.routers.api.entrypoints=websecure"
       - "traefik.http.routers.api.tls.certresolver=letsencrypt"
-      - "traefik.http.services.api.loadbalancer.server.port=8000"
+      - "traefik.http.services.api.loadbalancer.server.port=8015"
       # Redirect HTTP → HTTPS
       - "traefik.http.routers.api-http.rule=Host(`budget.${DOMAIN}`)"
       - "traefik.http.routers.api-http.entrypoints=web"
@@ -61,11 +61,12 @@ services:
 
   dashboard:
     restart: always
+    command: python -m dashboard.app
     ports: []
     volumes: []
     environment:
       DASH_DEBUG: "false"
-      BABBAGE_BASE_URL: http://api:8000/api/3
+      BABBAGE_BASE_URL: http://api:8015/api/3
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.dashboard.rule=Host(`presupuestos.${DOMAIN}`)"

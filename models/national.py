@@ -4,7 +4,7 @@ Representa los datos del Ministerio de Hacienda (CONPREL)
 para todos los municipios españoles.
 
 Convenciones:
-  - Código INE: 5 dígitos, string (ej: '11021' para Jerez)
+  - Código INE: 5 dígitos, string (ej: '11020' para Jerez)
   - Capítulo económico: 1 dígito string ('1'-'9')
   - Área funcional: 1 dígito string ('1'-'9')
   - data_type: 'budget' (presupuesto inicial) | 'liquidation' (liquidación)
@@ -34,7 +34,7 @@ class Municipality(Base):
     Catálogo de municipios españoles.
     Fuente: INE — Relación de Municipios y sus Códigos por Provincias.
     El código INE de 5 dígitos es la clave de integración con CONPREL.
-    Jerez de la Frontera: ine_code = '11021'
+    Jerez de la Frontera: ine_code = '11020'
     """
     __tablename__ = "municipalities"
 
@@ -43,7 +43,7 @@ class Municipality(Base):
     # Identificador INE — 5 dígitos (2 provincia + 3 municipio)
     ine_code: Mapped[str] = mapped_column(
         String(5), unique=True, nullable=False, index=True,
-        comment="Código INE 5 dígitos: '11021' = Jerez de la Frontera"
+        comment="Código INE 5 dígitos: '11020' = Jerez de la Frontera"
     )
     name: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -81,7 +81,7 @@ class Municipality(Base):
 
     @property
     def is_jerez(self) -> bool:
-        return self.ine_code == "11021"
+        return self.ine_code == "11020"
 
     def __repr__(self) -> str:
         return f"<Municipality {self.ine_code} {self.name}>"
@@ -232,7 +232,7 @@ class MunicipalBudget(Base):
 class MunicipalBudgetChapter(Base):
     """
     Detalle por capítulo económico de un presupuesto municipal anual.
-    Es la granularidad principal para la comparativa intercidades.
+    Es la granularidad principal para la comparativa entre ciudades.
     Un presupuesto tiene hasta 9 capítulos de gastos + 9 de ingresos.
     """
     __tablename__ = "municipal_budget_chapters"

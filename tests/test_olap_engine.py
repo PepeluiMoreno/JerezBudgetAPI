@@ -32,8 +32,8 @@ class TestParseCut:
         assert result[1] == ("data_type", "data_type", "liquidation")
 
     def test_municipality_filter(self):
-        result = parse_cut("municipality.ine_code:11021")
-        assert result[0] == ("municipality", "ine_code", "11021")
+        result = parse_cut("municipality.ine_code:11020")
+        assert result[0] == ("municipality", "ine_code", "11020")
 
     def test_empty_string_returns_empty(self):
         assert parse_cut("") == []

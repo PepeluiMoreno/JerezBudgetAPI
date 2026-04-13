@@ -23,7 +23,7 @@ from models.national import Municipality, PeerGroup, PeerGroupMember
 logger = structlog.get_logger(__name__)
 
 # Código INE de Jerez — constante de referencia
-JEREZ_INE = "11021"
+JEREZ_INE = "11020"
 
 
 async def rebuild_dynamic_peer_groups(db: AsyncSession) -> dict[str, int]:
@@ -125,7 +125,7 @@ async def get_peer_group_ine_codes(
 
 async def ensure_jerez_in_all_groups(db: AsyncSession) -> None:
     """
-    Garantiza que Jerez (11021) esté en todos los peer groups
+    Garantiza que Jerez (11020) esté en todos los peer groups
     donde debería estar por criterios. Se llama tras el seeding.
     """
     result = await db.execute(

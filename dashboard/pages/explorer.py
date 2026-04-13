@@ -93,7 +93,6 @@ layout = html.Div([
             options=[],                       # se puebla con callback
             value=[JEREZ_INE],
             multi=True,
-            max_selectable=5,
             placeholder="Escribe el nombre o código INE del municipio...",
             style={"fontSize": 13},
         ),
@@ -176,6 +175,19 @@ def populate_municipalities(search: str):
     if jerez_opt not in options:
         options = [jerez_opt] + options
     return options
+
+
+# ── Callback: limitar selección a 5 municipios ────────────────────────────────
+
+@callback(
+    Output("exp-municipalities", "value"),
+    Input("exp-municipalities",  "value"),
+    prevent_initial_call=True,
+)
+def cap_municipalities(selected):
+    if selected and len(selected) > 5:
+        return selected[:5]
+    return selected
 
 
 # ── Callback principal ────────────────────────────────────────────────────────
@@ -265,10 +277,11 @@ def update_explorer(mun_codes, measure, chapters, year_start, year_end, data_typ
                 measure_label: _f(r, measure_key),
             })
 
+    _tl = _chart_layout(height=300)
+    _tl["xaxis"].update({"dtick": 1})
     trend_fig.update_layout(
-        **_chart_layout(height=300),
+        **_tl,
         yaxis_title=measure_label,
-        xaxis={"dtick": 1},
         legend={"orientation": "h", "y": -0.25, "font": {"size": 10}},
     )
 

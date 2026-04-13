@@ -62,16 +62,16 @@ class TestCleanName:
 
 class TestMunicipalityRecord:
     def test_jerez_record(self):
-        """Jerez debe tener INE 11021."""
+        """Jerez debe tener INE 11020."""
         r = MunicipalityRecord(
-            ine_code="11021",
+            ine_code="11020",
             name="Jerez de la Frontera",
             province_code="11",
             province_name="Cádiz",
             ccaa_code="01",
             ccaa_name="Andalucía",
         )
-        assert r.ine_code == "11021"
+        assert r.ine_code == "11020"
         assert r.province_code == "11"
         assert "Andalucía" in r.ccaa_name
 
@@ -148,8 +148,8 @@ class TestPeerGroupCriteria:
         capitales_ine = ["04013","11020","14021","18087","21041","23050","29067","41091"]
         # Sevilla = 41091
         assert "41091" in capitales_ine
-        # Jerez = 11021 — NO es capital de provincia
-        assert "11021" not in capitales_ine
+        # Jerez = 11020 — NO es capital de provincia
+        assert "11020" not in capitales_ine
 
 
 # ── Tests modelo MunicipalBudget ──────────────────────────────────────────────

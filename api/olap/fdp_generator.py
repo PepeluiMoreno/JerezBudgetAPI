@@ -25,7 +25,7 @@ import structlog
 
 logger = structlog.get_logger(__name__)
 
-JEREZ_INE = "11021"
+JEREZ_INE = "11020"
 
 
 async def generate_fdp(

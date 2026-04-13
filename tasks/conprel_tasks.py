@@ -25,16 +25,7 @@ logger = structlog.get_logger(__name__)
 
 def _run(coro):
     """Ejecuta una corrutina desde un contexto síncrono (worker Celery)."""
-    try:
-        loop = asyncio.get_event_loop()
-        if loop.is_closed():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        return loop.run_until_complete(coro)
-    except RuntimeError:
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        return loop.run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 # ── Task 1: Poblar padrón INE ─────────────────────────────────────────────────

@@ -53,9 +53,9 @@ help:
 # ── Desarrollo ────────────────────────────────────────────────────────────────
 dev: up migrate
 	@echo "✅  Stack levantado:"
-	@echo "    GraphQL:    http://localhost:8000/graphql"
-	@echo "    Admin:      http://localhost:8000/admin"
-	@echo "    OLAP API:   http://localhost:8000/api/3/cubes/"
+	@echo "    GraphQL:    http://localhost:8015/graphql"
+	@echo "    Admin:      http://localhost:8015/admin"
+	@echo "    OLAP API:   http://localhost:8015/api/3/cubes/"
 	@echo "    Dashboard:  http://localhost:8050"
 	@echo "    Flower:     http://localhost:5555"
 	@echo "    MinIO:      http://localhost:9001"

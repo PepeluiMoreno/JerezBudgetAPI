@@ -82,8 +82,13 @@ PROVINCE_MAP: dict[str, tuple[str, str, str]] = {
     "52": ("Melilla",            "19", "Melilla"),
 }
 
-# URLs de descarga del catálogo INE
+# URLs de descarga del catálogo INE (de más reciente a más antigua)
+# A partir de 2025 el INE cambió el patrón: YYcodmun.xlsx / diccionarioYY.xlsx
 INE_CATALOG_URLS = [
+    "https://www.ine.es/daco/daco42/codmun/diccionario26.xlsx",
+    "https://www.ine.es/daco/daco42/codmun/26codmun.xlsx",
+    "https://www.ine.es/daco/daco42/codmun/diccionario25.xlsx",
+    "https://www.ine.es/daco/daco42/codmun/25codmun.xlsx",
     "https://www.ine.es/daco/daco42/codmun/codmun24.xlsx",
     "https://www.ine.es/daco/daco42/codmun/codmun23.xlsx",
 ]
@@ -111,9 +116,15 @@ def _parse_ine_xlsx(data: bytes) -> list[MunicipalityRecord]:
     Parsea el XLSX del INE con el catálogo de municipios.
     El fichero tiene columnas: CPRO, CMUN, DC, NOMBRE
     (DC = dígito de control, no lo usamos)
+    Intenta skiprows=1 y skiprows=0 para adaptarse a distintos formatos.
     """
-    df = pd.read_excel(io.BytesIO(data), dtype=str, skiprows=1)
-    df.columns = [str(c).strip().upper() for c in df.columns]
+    for skiprows in (1, 0):
+        df = pd.read_excel(io.BytesIO(data), dtype=str, skiprows=skiprows)
+        df.columns = [str(c).strip().upper() for c in df.columns]
+        if "CPRO" in df.columns and "CMUN" in df.columns:
+            break
+    else:
+        raise ValueError(f"Formato XLSX del INE no reconocido. Columnas: {list(df.columns)}")
 
     records: list[MunicipalityRecord] = []
 

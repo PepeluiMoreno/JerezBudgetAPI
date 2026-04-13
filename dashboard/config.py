@@ -11,13 +11,14 @@ import httpx
 
 # ── Configuración ────────────────────────────────────────────────────────────
 
-BABBAGE_BASE = os.getenv("BABBAGE_BASE_URL", "http://api:8000/api/3")
-DASH_HOST    = os.getenv("DASH_HOST", "0.0.0.0")
-DASH_PORT    = int(os.getenv("DASH_PORT", "8050"))
-DASH_DEBUG   = os.getenv("DASH_DEBUG", "false").lower() == "true"
-DASH_PREFIX  = os.getenv("DASH_URL_PREFIX", "")   # para embed en iframe
+BABBAGE_BASE    = os.getenv("BABBAGE_BASE_URL", "http://api:8015/api/3")
+DASH_HOST       = os.getenv("DASH_HOST", "0.0.0.0")
+DASH_PORT       = int(os.getenv("DASH_PORT", "8050"))
+DASH_DEBUG      = os.getenv("DASH_DEBUG", "false").lower() == "true"
+DASH_PREFIX     = os.getenv("DASH_URL_PREFIX", "")   # para embed en iframe
+API_PUBLIC_URL  = os.getenv("API_PUBLIC_URL", "http://localhost:8015")
 
-JEREZ_INE    = "11021"
+JEREZ_INE    = "11020"
 JEREZ_NAME   = "Jerez de la Frontera"
 
 # Colores institucionales

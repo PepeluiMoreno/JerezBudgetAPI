@@ -67,7 +67,7 @@ def parse_cut(cut_str: Optional[str]) -> list[tuple[str, str, str]]:
 
     Soporta:
       year.fiscal_year:2023
-      municipality.ine_code:11021
+      municipality.ine_code:11020
       chapter.direction:expense
       data_type.data_type:liquidation
     """

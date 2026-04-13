@@ -17,11 +17,14 @@ from models import Base   # noqa: F401 — importa Base + todos los modelos
 config = context.config
 
 # DATABASE_URL desde variable de entorno (prioridad sobre alembic.ini)
-database_url = os.environ.get("DATABASE_URL")
+database_url = os.environ.get("DATABASE_URL", "")
 if database_url:
-    # asyncpg para runtime, pero Alembic necesita la URL síncrona para autogenerate
-    sync_url = database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-    config.set_main_option("sqlalchemy.url", sync_url)
+    # Online (async): usar asyncpg directamente
+    async_url = database_url if database_url.startswith("postgresql+asyncpg://") \
+        else database_url.replace("postgresql://", "postgresql+asyncpg://")
+    # Offline (autogenerate SQL sin conexión): psycopg2 — solo afecta a run_migrations_offline
+    sync_url = async_url.replace("postgresql+asyncpg://", "postgresql://")
+    config.set_main_option("sqlalchemy.url", async_url)
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)

@@ -3,23 +3,19 @@ Aplicación principal Dash — JerezBudget Dashboard.
 
 Estructura multi-página con Dash Pages:
   /rigor        → Vista 1: Score de rigor de Jerez
-  /comparativa  → Vista 2: Comparativa intercidades
+  /comparativa  → Vista 2: Comparativa entre ciudades
   /explorador   → Vista 3: Explorador libre
 
-Consumo de la API babbage en http://api:8000/api/3
+Consumo de la API babbage en http://api:8015/api/3
 Configurable via variable de entorno BABBAGE_BASE_URL.
 """
 from __future__ import annotations
 
 import dash
 from dash import dcc, html, Input, Output, callback
+from dash.exceptions import PreventUpdate
 
-from dashboard.config import COLORS, DASH_HOST, DASH_PORT, DASH_DEBUG, DASH_PREFIX
-
-# Importar páginas para su registro
-import dashboard.pages.rigor
-import dashboard.pages.comparison
-import dashboard.pages.explorer
+from dashboard.config import COLORS, DASH_HOST, DASH_PORT, DASH_DEBUG, DASH_PREFIX, API_PUBLIC_URL
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
@@ -35,6 +31,30 @@ app = dash.Dash(
     title="JerezBudget — Rigor Presupuestario",
 )
 server = app.server   # WSGI server para Gunicorn
+
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
+def _nav_link(label: str, href: str, icon: str) -> html.A:
+    slug = label.lower()
+    return html.A(
+        [icon, " ", label],
+        id=f"nav-{slug}",
+        href=href,
+        style={
+            "display": "flex", "alignItems": "center", "gap": 5,
+            "padding": "6px 12px", "borderRadius": 4,
+            "color": "#9CA3AF",
+            "textDecoration": "none", "fontSize": 13,
+        }
+    )
+
+
+def _ext_link_style() -> dict:
+    return {
+        "color": "#6B7280", "fontSize": 11,
+        "textDecoration": "none", "padding": "4px 8px",
+        "border": "1px solid #374151", "borderRadius": 3,
+    }
 
 
 # ── Layout principal ──────────────────────────────────────────────────────────
@@ -69,8 +89,8 @@ app.layout = html.Div([
 
         # Links externos
         html.Div([
-            html.A("GraphiQL", href="/graphql", target="_blank", style=_ext_link_style()),
-            html.A("API OLAP",  href="/api/3/cubes/", target="_blank", style=_ext_link_style()),
+            html.A("GraphiQL", href=f"{API_PUBLIC_URL}/graphql", target="_blank", style=_ext_link_style()),
+            html.A("API OLAP",  href=f"{API_PUBLIC_URL}/api/3/cubes/", target="_blank", style=_ext_link_style()),
             html.A("GitHub",    href="https://github.com/PepeluiMoreno/JerezBudgetAPI",
                    target="_blank", style=_ext_link_style()),
         ], style={"display": "flex", "gap": 8, "marginLeft": "auto",
@@ -114,6 +134,18 @@ app.layout = html.Div([
 })
 
 
+# ── Redirección raíz → /rigor ─────────────────────────────────────────────────
+
+@callback(
+    Output("_pages_location", "pathname"),
+    Input("_pages_location",  "pathname"),
+)
+def redirect_root(pathname: str):
+    if pathname in ("/", ""):
+        return "/rigor"
+    raise PreventUpdate
+
+
 # ── Highlight de la pestaña activa ────────────────────────────────────────────
 
 @callback(
@@ -141,31 +173,6 @@ def highlight_active_nav(pathname: str):
     for p in paths:
         styles.append(active if (pathname or "").startswith(p) else inactive)
     return styles
-
-
-# ── Helpers ───────────────────────────────────────────────────────────────────
-
-def _nav_link(label: str, href: str, icon: str) -> html.A:
-    slug = label.lower()
-    return html.A(
-        [icon, " ", label],
-        id=f"nav-{slug}",
-        href=href,
-        style={
-            "display": "flex", "alignItems": "center", "gap": 5,
-            "padding": "6px 12px", "borderRadius": 4,
-            "color": "#9CA3AF",
-            "textDecoration": "none", "fontSize": 13,
-        }
-    )
-
-
-def _ext_link_style() -> dict:
-    return {
-        "color": "#6B7280", "fontSize": 11,
-        "textDecoration": "none", "padding": "4px 8px",
-        "border": "1px solid #374151", "borderRadius": 3,
-    }
 
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────

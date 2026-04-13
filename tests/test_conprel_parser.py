@@ -31,14 +31,14 @@ from etl.conprel.loader import _rate, _per_capita, _d
 
 class TestNormalizeEntityCode:
     def test_five_digits_passthrough(self):
-        assert _normalize_entity_code("11021") == "11021"
+        assert _normalize_entity_code("11020") == "11020"
 
     def test_nine_digits_extracts_last_five(self):
         # 01 (CCAA) + 11 (prov) + 021 (mun) + 2 extra → últimos 5
-        assert _normalize_entity_code("011102100") == "02100"  # ejemplo genérico
-        # Para Jerez: 01 + 11021 → "0111021" (7 dígitos) → últimos 5 = "11021"
+        assert _normalize_entity_code("011102000") == "02100"  # ejemplo genérico
+        # Para Jerez: 01 + 11020 → "0111020" (7 dígitos) → últimos 5 = "11020"
         # O el formato completo de 9: CCAA(2)+PROV(2)+MUN(5) → [4:] = los últimos 5
-        result = _normalize_entity_code("011102100")
+        result = _normalize_entity_code("011102000")
         assert len(result) == 5
         assert result.isdigit()
 
@@ -56,13 +56,13 @@ class TestNormalizeEntityCode:
         assert _normalize_entity_code("ABCDE") is None
 
     def test_jerez_code(self):
-        assert _normalize_entity_code("11021") == "11021"
+        assert _normalize_entity_code("11020") == "11020"
 
     def test_madrid_code(self):
         assert _normalize_entity_code("28079") == "28079"
 
     def test_strips_whitespace(self):
-        assert _normalize_entity_code(" 11021 ") == "11021"
+        assert _normalize_entity_code(" 11020 ") == "11020"
 
 
 # ── Tests conversión a Decimal ────────────────────────────────────────────────
@@ -222,7 +222,7 @@ class TestSubtotalDetection:
         assert _is_subtotal_like(["Total capítulo 1", None, None]) is True
 
     def test_normal_row(self):
-        assert _is_subtotal_like(["11021", "1", "5000000"]) is False
+        assert _is_subtotal_like(["11020", "1", "5000000"]) is False
 
     def test_subtotal_keyword(self):
         assert _is_subtotal_like(["Subtotal provincia", "15000000"]) is True

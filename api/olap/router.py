@@ -126,7 +126,7 @@ async def aggregate(
 
       # Evolución Jerez por capítulo 2020-2024
       ?drilldown=year.fiscal_year|chapter.chapter
-      &cut=municipality.ine_code:11021|data_type.data_type:liquidation
+      &cut=municipality.ine_code:11020|data_type.data_type:liquidation
       &order=year.fiscal_year:asc
 
       # Score de rigor histórico de Jerez
@@ -262,7 +262,7 @@ async def fiscal_data_package(
 ):
     """
     Genera un Fiscal Data Package (FDP) compatible con OpenBudgets.
-    Para el cubo municipal-spain devuelve los datos de Jerez (11021).
+    Para el cubo municipal-spain devuelve los datos de Jerez (11020).
     Para los cubos jerez-* devuelve todos los datos disponibles.
 
     El ZIP contiene datapackage.json + CSVs.

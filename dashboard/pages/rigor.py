@@ -237,10 +237,11 @@ def update_rigor(year: int):
         trend_fig.add_hrect(y0=50, y1=75, fillcolor=COLORS["warn"],
                             opacity=0.06, line_width=0)
 
+    _tl = _chart_layout(height=260)
+    _tl["yaxis"].update({"range": [0, 105], "title": "Score (0-100)"})
+    _tl["xaxis"].update({"dtick": 1})
     trend_fig.update_layout(
-        **_chart_layout(height=260),
-        yaxis={"range": [0, 105], "title": "Score (0-100)"},
-        xaxis={"dtick": 1},
+        **_tl,
         showlegend=True,
         legend={"orientation": "h", "y": -0.2, "font": {"size": 11}},
     )
@@ -289,11 +290,9 @@ def update_rigor(year: int):
         ch_fig.add_annotation(text="Sin datos de ejecución por capítulo",
                               showarrow=False, font={"color": COLORS["text_muted"]})
 
-    ch_fig.update_layout(
-        **_chart_layout(height=260),
-        xaxis={"range": [0, 120], "title": "Tasa de ejecución (%)"},
-        showlegend=False,
-    )
+    _cl = _chart_layout(height=260)
+    _cl["xaxis"].update({"range": [0, 120], "title": "Tasa de ejecución (%)"})
+    ch_fig.update_layout(**_cl, showlegend=False)
 
     return alerts, kpis, g_global, g_ipp, g_itp, g_itr, trend_fig, ch_fig
 

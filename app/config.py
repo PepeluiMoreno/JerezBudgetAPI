@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     # ── API ──────────────────────────────────────────────────────
     api_debug: bool = False
     api_secret_key: str = "dev-secret-key-change-in-production"
-    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8000"]
+    cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8015"]
 
     # ── Scraping ─────────────────────────────────────────────────
     transparencia_base_url: str = "https://transparencia.jerez.es"

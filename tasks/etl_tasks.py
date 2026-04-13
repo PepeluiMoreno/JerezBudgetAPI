@@ -21,7 +21,7 @@ logger = structlog.get_logger(__name__)
 
 def _run(coro):
     """Ejecuta una corrutina desde un contexto síncrono (worker Celery)."""
-    return asyncio.get_event_loop().run_until_complete(coro)
+    return asyncio.run(coro)
 
 
 # ── Task 1: Discovery ────────────────────────────────────────────────────────

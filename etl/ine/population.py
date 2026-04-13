@@ -42,7 +42,7 @@ async def fetch_population_ine_code(
     Obtiene la serie histórica de población para un municipio dado.
 
     Args:
-        ine_code: Código INE de 5 dígitos ('11021' para Jerez)
+        ine_code: Código INE de 5 dígitos ('11020' para Jerez)
         years: Lista de años a obtener (None = todos disponibles)
 
     Returns:
@@ -71,7 +71,7 @@ async def fetch_population_ine_code(
         # Filtramos la que corresponde a nuestro municipio
         for serie in data:
             # El nombre de la serie contiene el municipio: "Jerez de la Frontera"
-            # y el código: "11021"
+            # y el código: "11020"
             nombre = str(serie.get("Nombre", ""))
             if ine_code not in nombre and ine_code not in str(serie.get("COD", "")):
                 continue

@@ -1,5 +1,5 @@
 """
-Vista 2 — Comparativa intercidades.
+Vista 2 — Comparativa entre ciudades.
 
 Jerez vs municipios de su grupo de pares:
   - Ranking €/hab ejecutado (barras) con Jerez destacado
@@ -23,13 +23,13 @@ from dashboard.components import (
     filter_bar, section_title, empty_state, page_header, kpi_card,
 )
 
-dash.register_page(__name__, path="/comparativa", name="Comparativa intercidades", order=1)
+dash.register_page(__name__, path="/comparativa", name="Comparativa entre ciudades", order=1)
 
 
 layout = html.Div([
 
     page_header(
-        "Comparativa intercidades",
+        "Comparativa entre ciudades",
         "Jerez vs municipios similares · Fuente: CONPREL — Ministerio de Hacienda"
     ),
 

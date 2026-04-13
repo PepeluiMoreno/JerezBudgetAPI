@@ -34,7 +34,7 @@ def upgrade() -> None:
         "municipalities",
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("ine_code", sa.String(5), nullable=False,
-                  comment="Código INE 5 dígitos: '11021' = Jerez"),
+                  comment="Código INE 5 dígitos: '11020' = Jerez"),
         sa.Column("name", sa.Text(), nullable=False),
         sa.Column("province_code", sa.String(2), nullable=False),
         sa.Column("province_name", sa.Text(), nullable=False),
@@ -208,7 +208,7 @@ def upgrade() -> None:
             mbc.execution_rate      AS chapter_execution_rate,
             mbc.modification_rate   AS chapter_modification_rate,
             -- Flag: ¿es Jerez?
-            (m.ine_code = '11021')::boolean AS is_jerez,
+            (m.ine_code = '11020')::boolean AS is_jerez,
             -- Flag: ¿está en el grupo de pares de Jerez (100k-250k, Andalucía)?
             EXISTS (
                 SELECT 1 FROM peer_group_members pgm

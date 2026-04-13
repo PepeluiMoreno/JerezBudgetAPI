@@ -48,9 +48,9 @@ make load-conprel           # CONPREL 2010-2024 (~25 min)
 
 | Servicio | URL |
 |----------|-----|
-| GraphiQL | http://localhost:8000/graphql |
-| Admin modificaciones | http://localhost:8000/admin |
-| API OLAP | http://localhost:8000/api/3/cubes/ |
+| GraphiQL | http://localhost:8015/graphql |
+| Admin modificaciones | http://localhost:8015/admin |
+| API OLAP | http://localhost:8015/api/3/cubes/ |
 | Dashboard | http://localhost:8050 |
 | Flower | http://localhost:5555 |
 

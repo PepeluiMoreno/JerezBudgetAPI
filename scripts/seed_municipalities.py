@@ -56,7 +56,7 @@ async def main():
     from models.national import Municipality
     async with AsyncSessionLocal() as db:
         result = await db.execute(
-            select(Municipality).where(Municipality.ine_code == "11021")
+            select(Municipality).where(Municipality.ine_code == "11020")
         )
         jerez = result.scalar_one_or_none()
         if jerez:
@@ -68,7 +68,7 @@ async def main():
             )
         else:
             logger.warning("jerez_not_found",
-                          msg="Jerez (11021) no encontrado en el catálogo — verificar")
+                          msg="Jerez (11020) no encontrado en el catálogo — verificar")
 
     # 4. Calcular peer groups (sin población aún — se recalculará tras ETL INE)
     logger.info("step_4_peer_groups", msg="Inicializando peer groups...")
