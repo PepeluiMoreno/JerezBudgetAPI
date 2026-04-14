@@ -60,17 +60,89 @@ def kpi_card(
     })
 
 
-def score_gauge(score: float | None, label: str, size: int = 160) -> html.Div:
-    """Gauge circular para mostrar un score 0-100."""
+# ── Definiciones de indicadores (modal de info) ───────────────────────────────
+
+INFO_DEFINITIONS: dict[str, dict] = {
+    "score-global": {
+        "title": "Score Global de Rigor",
+        "body": (
+            "Media ponderada de los tres índices componentes:\n\n"
+            "• IPP — Precisión (40 %): mide la desviación entre el presupuesto inicial y la liquidación final.\n"
+            "• ITP — Puntualidad (40 %): penaliza el retraso en la aprobación del presupuesto.\n"
+            "• ITR — Transparencia (20 %): valora la publicación de documentos en el portal de transparencia.\n\n"
+            "Rango: 0 (peor) → 100 (mejor)."
+        ),
+    },
+    "ipp": {
+        "title": "IPP — Índice de Precisión Presupuestaria",
+        "body": (
+            "Mide cuánto se desvían las previsiones iniciales respecto a la liquidación final.\n\n"
+            "• 100 = presupuesto ejecutado exactamente como se planificó.\n"
+            "• Penaliza tanto modificaciones de crédito como diferencias entre crédito definitivo y obligaciones reconocidas.\n\n"
+            "Fórmula: 100 − (tasa_modificación + tasa_desviación_ejecución) / 2"
+        ),
+    },
+    "itp": {
+        "title": "ITP — Índice de Puntualidad",
+        "body": (
+            "Penaliza el retraso en la aprobación del presupuesto respecto al 1 de enero.\n\n"
+            "• 100 = presupuesto aprobado antes del inicio del ejercicio.\n"
+            "• Cada mes de prórroga resta puntos proporcionalmente.\n"
+            "• 0 = presupuesto aprobado con más de 6 meses de retraso o en prórroga todo el año."
+        ),
+    },
+    "itr": {
+        "title": "ITR — Índice de Transparencia",
+        "body": (
+            "Valora la publicación de documentos presupuestarios obligatorios en el portal de transparencia.\n\n"
+            "• 100 = todos los documentos publicados en plazo (presupuesto inicial, liquidación, modificaciones).\n"
+            "• Se descuenta por cada documento faltante o publicado fuera de plazo.\n\n"
+            "Fuente de datos: transparencia.jerez.es"
+        ),
+    },
+}
+
+
+def info_button(info_key: str) -> html.Button:
+    """Botón circular verde con 'i' blanca que abre el modal de información."""
+    return html.Button(
+        "i",
+        id={"type": "info-btn", "index": info_key},
+        n_clicks=0,
+        style={
+            "display": "inline-flex",
+            "alignItems": "center",
+            "justifyContent": "center",
+            "width": 18,
+            "height": 18,
+            "borderRadius": "50%",
+            "background": COLORS["good"],
+            "color": "#fff",
+            "border": "none",
+            "fontSize": 11,
+            "fontWeight": 700,
+            "fontStyle": "italic",
+            "cursor": "pointer",
+            "marginLeft": 8,
+            "flexShrink": 0,
+            "lineHeight": 1,
+            "padding": 0,
+            "verticalAlign": "middle",
+        },
+        title="Ver definición",
+    )
+
+
+def score_gauge(score: float | None, label: str, size: int = 160,
+                info_key: str = "") -> html.Div:
+    """Gauge circular 0-100 con etiqueta e icono de info clicable."""
     import plotly.graph_objects as go
     from dash import dcc
 
     if score is None:
-        display = "N/D"
         color = COLORS["text_muted"]
         val = 0
     else:
-        display = f"{score:.1f}"
         val = score
         if score >= 75:
             color = COLORS["good"]
@@ -94,14 +166,30 @@ def score_gauge(score: float | None, label: str, size: int = 160) -> html.Div:
                 {"range": [75, 100],"color": "#D1FAE5"},
             ],
         },
-        title={"text": label, "font": {"size": 12, "color": COLORS["text_muted"]}},
     ))
     fig.update_layout(
-        height=size, margin={"t": 30, "b": 10, "l": 20, "r": 20},
+        height=size, margin={"t": 10, "b": 10, "l": 20, "r": 20},
         paper_bgcolor=COLORS["surface"], plot_bgcolor=COLORS["surface"],
         font={"family": "system-ui"},
     )
-    return dcc.Graph(figure=fig, config={"displayModeBar": False})
+
+    header = html.Div([
+        html.Span(label, style={
+            "fontSize": 11, "fontWeight": 700,
+            "color": COLORS["text_muted"],
+            "textTransform": "uppercase",
+            "letterSpacing": "0.06em",
+        }),
+        info_button(info_key) if info_key else None,
+    ], style={
+        "display": "flex", "alignItems": "center", "justifyContent": "center",
+        "paddingTop": 10, "paddingBottom": 2,
+    })
+
+    return html.Div([
+        header,
+        dcc.Graph(figure=fig, config={"displayModeBar": False}),
+    ])
 
 
 def year_dropdown(

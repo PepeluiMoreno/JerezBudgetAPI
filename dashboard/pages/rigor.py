@@ -29,48 +29,63 @@ dash.register_page(__name__, path="/rigor", name="Rigor presupuestario", order=0
 
 layout = html.Div([
 
-    page_header(
-        "Rigor presupuestario — Jerez de la Frontera",
-        "Índices IPP (Precisión), ITP (Puntualidad), ITR (Transparencia) · Fuente: transparencia.jerez.es"
-    ),
-
-    # Filtros
-    filter_bar(
-        html.Div(year_dropdown("rigor-year", years=list(range(2020, 2027)), value=2025),
-                 style={"width": 140}),
-    ),
+    # Header + selector de año en la misma barra
+    html.Div([
+        html.Div([
+            html.H1("Rigor presupuestario — Jerez de la Frontera", style={
+                "margin": 0, "fontSize": 22, "fontWeight": 800,
+                "color": COLORS["text"], "letterSpacing": "-0.02em",
+            }),
+            html.P(
+                "Índices IPP (Precisión), ITP (Puntualidad), ITR (Transparencia) · Fuente: transparencia.jerez.es",
+                style={"margin": "4px 0 0", "fontSize": 13, "color": COLORS["text_muted"]},
+            ),
+        ], style={"flex": 1}),
+        html.Div(
+            year_dropdown("rigor-year", years=list(range(2020, 2027)), value=2025),
+            style={"width": 140, "flexShrink": 0},
+        ),
+    ], style={
+        "display": "flex", "alignItems": "center", "gap": 20,
+        "padding": "16px 28px 14px",
+        "borderBottom": f"1px solid {COLORS['border']}",
+        "background": COLORS["surface"],
+    }),
 
     # Alertas dinámicas
-    html.Div(id="rigor-alerts", style={"padding": "12px 28px 0"}),
+    html.Div(id="rigor-alerts", style={"padding": "8px 28px 0"}),
 
     # KPIs superiores
     html.Div(id="rigor-kpis", style={
         "display": "grid",
         "gridTemplateColumns": "repeat(4, 1fr)",
         "gap": 12,
-        "padding": "16px 28px",
+        "padding": "12px 28px",
     }),
 
-    # Fila de gauges
+    # Score Global (fila propia, centrado)
     html.Div([
-        html.Div([
-            section_title("Score Global de Rigor"),
-            html.Div(id="gauge-global", style={"textAlign": "center"}),
-        ], style={"background": COLORS["surface"], "padding": 20, "flex": 1}),
-        html.Div([
-            section_title("Índices componentes"),
-            html.Div([
-                html.Div(id="gauge-ipp"),
-                html.Div(id="gauge-itp"),
-                html.Div(id="gauge-itr"),
-            ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr 1fr", "gap": 8}),
-        ], style={"background": COLORS["surface"], "padding": 20, "flex": 2,
-                  "marginLeft": 12}),
+        html.Div(id="gauge-global", style={"maxWidth": 340, "margin": "0 auto"}),
     ], style={
-        "display": "flex", "padding": "0 28px 16px",
+        "background": COLORS["surface"],
+        "border": f"1px solid {COLORS['border']}",
+        "margin": "0 28px 12px",
+        "padding": "16px 28px 8px",
+    }),
+
+    # Panel de índices componentes
+    html.Div([
+        section_title("Índices componentes"),
+        html.Div([
+            html.Div(id="gauge-ipp"),
+            html.Div(id="gauge-itp"),
+            html.Div(id="gauge-itr"),
+        ], style={"display": "grid", "gridTemplateColumns": "1fr 1fr 1fr", "gap": 8}),
+    ], style={
+        "background": COLORS["surface"],
         "border": f"1px solid {COLORS['border']}",
         "margin": "0 28px 16px",
-        "background": COLORS["surface"],
+        "padding": "16px 28px 12px",
     }),
 
     # Fila inferior: histórico + ejecución por capítulo
@@ -192,10 +207,10 @@ def update_rigor(year: int):
     ]
 
     # ── Gauges ────────────────────────────────────────────────────────────────
-    g_global = score_gauge(score, "Score Global de Rigor", size=200)
-    g_ipp    = score_gauge(ipp,   "IPP — Precisión",       size=140)
-    g_itp    = score_gauge(itp,   "ITP — Puntualidad",     size=140)
-    g_itr    = score_gauge(itr,   "ITR — Transparencia",   size=140)
+    g_global = score_gauge(score, "Score Global de Rigor", size=160, info_key="score-global")
+    g_ipp    = score_gauge(ipp,   "IPP — Precisión",       size=120, info_key="ipp")
+    g_itp    = score_gauge(itp,   "ITP — Puntualidad",     size=120, info_key="itp")
+    g_itr    = score_gauge(itr,   "ITR — Transparencia",   size=120, info_key="itr")
 
     # ── Tendencia histórica ───────────────────────────────────────────────────
     trend_cells = client.aggregate(

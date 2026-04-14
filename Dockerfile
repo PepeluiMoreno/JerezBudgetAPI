@@ -15,7 +15,8 @@ WORKDIR /app
 COPY pyproject.toml poetry.lock* ./
 
 # instalar deps en el sistema (sin venv)
-RUN poetry install --no-root --only main
+RUN poetry install --no-root --only main \
+ && pip install "pydantic==2.10.*" "pydantic-settings>=2.7,<3"
 
 # ── runtime stage ────────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime

@@ -12,10 +12,11 @@ Configurable via variable de entorno BABBAGE_BASE_URL.
 from __future__ import annotations
 
 import dash
-from dash import dcc, html, Input, Output, callback
+from dash import dcc, html, Input, Output, State, callback, ALL
 from dash.exceptions import PreventUpdate
 
 from dashboard.config import COLORS, DASH_HOST, DASH_PORT, DASH_DEBUG, DASH_PREFIX, API_PUBLIC_URL
+from dashboard.components import INFO_DEFINITIONS
 
 # ── App ───────────────────────────────────────────────────────────────────────
 
@@ -108,6 +109,53 @@ app.layout = html.Div([
     # ── Contenido de la página activa ─────────────────────────────────────────
     dash.page_container,
 
+    # ── Modal global de información de indicadores ────────────────────────────
+    html.Div(
+        id="info-modal-overlay",
+        children=[
+            # Backdrop — clic cierra el modal
+            html.Div(id="info-modal-backdrop", style={
+                "position": "fixed", "inset": 0,
+                "background": "rgba(0,0,0,0.45)",
+                "zIndex": 999,
+            }),
+            # Tarjeta del modal
+            html.Div([
+                html.Div([
+                    html.Div(id="info-modal-title", style={
+                        "fontSize": 16, "fontWeight": 700,
+                        "color": COLORS["text"], "flex": 1,
+                    }),
+                    html.Button("✕", id="info-modal-close", n_clicks=0, style={
+                        "background": "none", "border": "none",
+                        "fontSize": 18, "cursor": "pointer",
+                        "color": COLORS["text_muted"], "padding": "0 4px",
+                        "lineHeight": 1,
+                    }),
+                ], style={"display": "flex", "alignItems": "flex-start",
+                          "marginBottom": 14}),
+                html.Div(id="info-modal-body", style={
+                    "fontSize": 13, "color": COLORS["text_muted"],
+                    "lineHeight": 1.7, "whiteSpace": "pre-line",
+                }),
+            ], style={
+                "position": "fixed",
+                "top": "50%", "left": "50%",
+                "transform": "translate(-50%,-50%)",
+                "background": COLORS["surface"],
+                "border": f"1px solid {COLORS['border']}",
+                "borderTop": f"3px solid {COLORS['good']}",
+                "borderRadius": 4,
+                "padding": "24px 28px",
+                "width": 420,
+                "maxWidth": "90vw",
+                "zIndex": 1000,
+                "boxShadow": "0 8px 32px rgba(0,0,0,0.25)",
+            }),
+        ],
+        style={"display": "none"},   # oculto por defecto
+    ),
+
     # ── Footer ────────────────────────────────────────────────────────────────
     html.Footer([
         html.Span("JerezBudget API · ", style={"color": "#6B7280", "fontSize": 11}),
@@ -173,6 +221,43 @@ def highlight_active_nav(pathname: str):
     for p in paths:
         styles.append(active if (pathname or "").startswith(p) else inactive)
     return styles
+
+
+# ── Modal de información ──────────────────────────────────────────────────────
+
+@callback(
+    Output("info-modal-overlay", "style"),
+    Output("info-modal-title",   "children"),
+    Output("info-modal-body",    "children"),
+    Input({"type": "info-btn", "index": ALL}, "n_clicks"),
+    Input("info-modal-close",    "n_clicks"),
+    Input("info-modal-backdrop", "n_clicks"),
+    prevent_initial_call=True,
+)
+def toggle_info_modal(btn_clicks, close_clicks, backdrop_clicks):
+    from dash import ctx
+    hidden = {"display": "none"}
+    visible = {"display": "block"}
+
+    trigger = ctx.triggered_id
+
+    # Cerrar si se pulsó X o el backdrop
+    if trigger in ("info-modal-close", "info-modal-backdrop"):
+        return hidden, "", ""
+
+    # Abrir si se pulsó algún botón de info
+    if isinstance(trigger, dict) and trigger.get("type") == "info-btn":
+        key = trigger["index"]
+        defn = INFO_DEFINITIONS.get(key, {})
+        if not defn:
+            raise PreventUpdate
+        # Verificar que el click fue real (n_clicks > 0)
+        clicked_values = btn_clicks or []
+        if not any(v and v > 0 for v in clicked_values):
+            raise PreventUpdate
+        return visible, defn["title"], defn["body"]
+
+    raise PreventUpdate
 
 
 # ── Entrypoint ────────────────────────────────────────────────────────────────

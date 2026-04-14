@@ -17,7 +17,16 @@ from app.db import engine
 from api.health import router as health_router
 from api.admin import router as admin_router
 from api.olap.router import router as olap_router
-from graphql.schema import create_graphql_router
+
+try:
+    from graphql.schema import create_graphql_router as _create_graphql_router
+    _graphql_available = True
+except Exception as _graphql_err:
+    import logging
+    logging.getLogger(__name__).warning(
+        "GraphQL no disponible (dependencias incompatibles): %s", _graphql_err
+    )
+    _graphql_available = False
 
 settings = get_settings()
 
@@ -78,8 +87,9 @@ def create_app() -> FastAPI:
     app.include_router(olap_router)
 
     # GraphQL — accesible en /graphql (con GraphiQL en modo dev)
-    graphql_router = create_graphql_router()
-    app.include_router(graphql_router, prefix="/graphql")
+    if _graphql_available:
+        graphql_router = _create_graphql_router()
+        app.include_router(graphql_router, prefix="/graphql")
 
     # ── Root ──────────────────────────────────────────────────────────────────
     @app.get("/", include_in_schema=False)

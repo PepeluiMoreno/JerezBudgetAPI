@@ -120,12 +120,6 @@ def ingest_file(self, file_info_dict: dict):
         # 1. Descargar
         download_result = await download_file(file_info)
 
-        if download_result.already_existed:
-            # El SHA ya estaba — comprobar si el snapshot también
-            # Si ya existe, no hay nada que hacer
-            logger.info("file_already_processed", sha256=download_result.sha256[:12])
-            return None
-
         # 2. Parsear
         hint = "expense" if file_info.file_type == FileType.EXECUTION_EXPENSES else "revenue"
         parse_result = parse_execution_xlsx(download_result.local_path, hint_direction=hint)
