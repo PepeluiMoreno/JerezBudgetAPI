@@ -35,73 +35,97 @@ def _run(coro):
     name="tasks.conprel_tasks.seed_ine_population",
     max_retries=2,
     queue="etl",
-    time_limit=1800,  # 30 min — hay ~8k municipios × ~14 años
+    # Sin time_limit: duración depende de la API del INE (~1 s × 8 k municipios)
 )
 def seed_ine_population(self, ine_codes: Optional[list[str]] = None, batch_size: int = 50):
     """
-    Carga la serie histórica de población del INE para todos los municipios
-    (o una lista específica si se proporciona).
-
-    Estrategia por lotes para no saturar la API del INE.
+    Carga la serie histórica de población del INE.
+    Reanudable: omite municipios que ya tienen datos en municipal_population.
     """
     from app.db import AsyncSessionLocal
     from sqlalchemy import select
     from models.national import Municipality
-    from etl.ine.population import fetch_population_batch, upsert_population, PADRON_YEARS
+    from models.national import MunicipalPopulation
+    from etl.ine.population import upsert_population, PADRON_YEARS
 
     async def _run_seed():
+        from app.db import engine
+        from etl.ine.population import fetch_all_population_bulk
+        await engine.dispose()   # libera conexiones del loop anterior
+
         async with AsyncSessionLocal() as db:
-            if ine_codes:
-                codes = ine_codes
-            else:
-                result = await db.execute(
-                    select(Municipality.ine_code, Municipality.id)
-                    .where(Municipality.is_active == True)
-                    .order_by(Municipality.ine_code)
-                )
-                codes_with_ids = list(result.all())
-                codes = [r[0] for r in codes_with_ids]
+            # Todos los municipios activos ordenados
+            result = await db.execute(
+                select(Municipality.ine_code)
+                .where(Municipality.is_active == True)
+                .order_by(Municipality.ine_code)
+            )
+            all_codes = [r[0] for r in result.all()] if not ine_codes else ine_codes
 
-            logger.info("population_seed_start", total_municipalities=len(codes))
+            # Municipios que ya tienen al menos un registro → se saltan
+            done_result = await db.execute(
+                select(Municipality.ine_code)
+                .join(MunicipalPopulation,
+                      MunicipalPopulation.municipality_id == Municipality.id)
+                .distinct()
+            )
+            already_done = {r[0] for r in done_result.all()}
+            pending = [c for c in all_codes if c not in already_done]
 
-            total_upserted = 0
-            for i in range(0, len(codes), batch_size):
-                batch = codes[i:i + batch_size]
-                logger.debug("population_batch", batch_num=i // batch_size + 1, size=len(batch))
+        logger.info(
+            "population_seed_start",
+            total=len(all_codes),
+            already_done=len(already_done),
+            pending=len(pending),
+        )
 
-                pop_data = await fetch_population_batch(batch, years=PADRON_YEARS)
+        if not pending:
+            logger.info("population_seed_already_complete")
+            return 0
 
-                for ine_code, pop_by_year in pop_data.items():
+        # ── Descarga masiva ÚNICA — 1 llamada en lugar de ~8000 ──────────────
+        bulk_data = await fetch_all_population_bulk(years=PADRON_YEARS)
+        logger.info(
+            "population_bulk_ready",
+            municipalities_in_api=len(bulk_data),
+            pending_in_db=len(pending),
+        )
+
+        total_upserted = 0
+        async with AsyncSessionLocal() as db:
+            for i in range(0, len(pending), batch_size):
+                batch = pending[i:i + batch_size]
+
+                for code in batch:
+                    pop_by_year = bulk_data.get(code, {})
                     if not pop_by_year:
+                        logger.debug("population_not_in_api", ine_code=code)
                         continue
-                    result = await db.execute(
-                        select(Municipality.id).where(Municipality.ine_code == ine_code)
+                    res = await db.execute(
+                        select(Municipality).where(Municipality.ine_code == code)
                     )
-                    mun_id = result.scalar_one_or_none()
-                    if not mun_id:
+                    mun = res.scalar_one_or_none()
+                    if not mun:
                         continue
-                    n = await upsert_population(db, mun_id, pop_by_year)
+                    n = await upsert_population(db, mun.id, pop_by_year)
                     total_upserted += n
-
-                    # Actualizar population y population_year en municipalities
                     latest_year = max(pop_by_year.keys())
-                    result = await db.execute(
-                        select(Municipality).where(Municipality.id == mun_id)
-                    )
-                    mun = result.scalar_one_or_none()
-                    if mun:
-                        mun.population      = pop_by_year[latest_year]
-                        mun.population_year = latest_year
+                    mun.population      = pop_by_year[latest_year]
+                    mun.population_year = latest_year
 
                 await db.commit()
-                logger.info("population_batch_done", progress=f"{i + len(batch)}/{len(codes)}")
+                done_so_far = len(already_done) + i + len(batch)
+                logger.info(
+                    "population_batch_done",
+                    progress=f"{done_so_far}/{len(all_codes)}",
+                    pct=round(done_so_far / len(all_codes) * 100, 1),
+                )
 
-            return total_upserted
+        return total_upserted
 
     try:
         total = _run(_run_seed())
         logger.info("population_seed_complete", records=total)
-        # Tras cargar población, reconstruir peer groups
         rebuild_peer_groups.apply_async(queue="etl", countdown=5)
         return {"status": "ok", "records": total}
     except Exception as exc:
@@ -137,6 +161,8 @@ def ingest_conprel_year(self, year: int, mdb_local_path: Optional[str] = None):
     from etl.conprel.loader import load_conprel_year, refresh_comparison_view
 
     async def _pipeline():
+        from app.db import engine
+        await engine.dispose()   # libera conexiones del loop anterior
         # 1. Obtener el MDB
         if mdb_local_path:
             mdb_path = Path(mdb_local_path)
@@ -226,6 +252,8 @@ def rebuild_peer_groups():
     from services.peer_groups import rebuild_dynamic_peer_groups, ensure_jerez_in_all_groups
 
     async def _rebuild():
+        from app.db import engine
+        await engine.dispose()   # libera conexiones del loop anterior
         async with AsyncSessionLocal() as db:
             stats = await rebuild_dynamic_peer_groups(db)
             await ensure_jerez_in_all_groups(db)

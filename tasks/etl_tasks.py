@@ -115,6 +115,8 @@ def ingest_file(self, file_info_dict: dict):
     )
 
     async def _ingest():
+        from app.db import engine
+        await engine.dispose()   # libera conexiones del loop anterior
         # 1. Descargar
         download_result = await download_file(file_info)
 
@@ -202,6 +204,8 @@ def compute_metrics(self, fiscal_year: int):
     logger.info("compute_metrics_start", year=fiscal_year)
 
     async def _compute():
+        from app.db import engine
+        await engine.dispose()   # libera conexiones del loop anterior
         async with AsyncSessionLocal() as db:
             service = RigorMetricsService(db)
             metrics = await service.compute_and_store(fiscal_year)
