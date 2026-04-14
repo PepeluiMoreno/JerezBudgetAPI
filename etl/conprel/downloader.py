@@ -23,22 +23,20 @@ from app.config import get_settings
 logger = structlog.get_logger(__name__)
 settings = get_settings()
 
-# Patrones de URL del CONPREL por año
-# El Ministerio ha cambiado la estructura de URLs varias veces.
-# Se ordenan de más reciente a más antiguo para cada año.
+# URL actual del CONPREL (verificada 2026-04-14)
+# La descarga devuelve un ZIP que contiene el MDB.
+# TipoDato: "Liquidaciones" = ejecución/liquidación (lo que queremos)
+#           "Presupuestos"  = presupuesto inicial
+_CONPREL_BASE = "https://serviciostelematicosext.hacienda.gob.es/SGFAL/CONPREL"
+_CONPREL_TIPO = "Liquidaciones"
+
+
 def _candidate_urls(year: int) -> list[str]:
-    base = "https://serviciostelematicosext.hacienda.gob.es/SGFAL/CONPREL"
     return [
-        # Formato reciente (2020+)
-        f"{base}/Consulta/DescargaFichero?tipo=MDB&anyo={year}",
-        f"{base}/Consulta/DescargaFicheroMDB?anyo={year}",
-        # Formato legacy
-        f"{base}/datos/ppto{year}.mdb",
-        f"{base}/datos/liq{year}.mdb",
-        f"{base}/presupuestos/ppto{year}.mdb",
-        # Con sufijo del tipo de entidad
-        f"{base}/datos/MUNI{year}.mdb",
-        f"{base}/datos/municipios{year}.mdb",
+        # Formato actual (2020+): devuelve ZIP con MDB dentro
+        f"{_CONPREL_BASE}/Consulta/DescargaFichero?CCAA=&TipoDato={_CONPREL_TIPO}&Ejercicio={year}&TipoPublicacion=Access",
+        # Variante con Presupuestos como fallback
+        f"{_CONPREL_BASE}/Consulta/DescargaFichero?CCAA=&TipoDato=Presupuestos&Ejercicio={year}&TipoPublicacion=Access",
     ]
 
 
@@ -84,10 +82,18 @@ async def download_conprel_mdb(year: int) -> Path:
                     continue
                 resp.raise_for_status()
 
-                # Verificar que es un fichero MDB (magic bytes: 0x00 0x01 0x00 0x00)
                 content = resp.content
                 if len(content) < 4:
                     continue
+
+                # Desempaquetar ZIP si hace falta (el Ministerio envía ZIP desde 2020)
+                if _is_zip(content):
+                    content = _extract_mdb_from_zip(content)
+                    if content is None:
+                        logger.warning("no_mdb_in_zip", url=url)
+                        continue
+
+                # Verificar que es un fichero MDB
                 if not _is_mdb(content):
                     logger.warning("not_mdb_content", url=url, size=len(content))
                     continue
@@ -125,6 +131,25 @@ async def download_conprel_mdb(year: int) -> Path:
     )
 
 
+def _is_zip(content: bytes) -> bool:
+    """Detecta fichero ZIP por magic bytes PK\\x03\\x04."""
+    return content[:4] == b"PK\x03\x04"
+
+
+def _extract_mdb_from_zip(content: bytes) -> bytes | None:
+    """Extrae el primer fichero .mdb/.accdb de un ZIP en memoria."""
+    import io
+    import zipfile
+    try:
+        with zipfile.ZipFile(io.BytesIO(content)) as zf:
+            for name in zf.namelist():
+                if name.lower().endswith((".mdb", ".accdb")):
+                    return zf.read(name)
+    except Exception:
+        pass
+    return None
+
+
 def _is_mdb(content: bytes) -> bool:
     """Verifica magic bytes de fichero Access MDB/ACCDB."""
     # MDB97-2003: empieza por 0x00 0x01 0x00 0x00
@@ -138,7 +163,6 @@ def _is_mdb(content: bytes) -> bool:
 async def _from_minio_cache(key: str) -> Path | None:
     """Intenta recuperar el MDB desde la cache de MinIO."""
     import asyncio
-    loop = asyncio.get_event_loop()
 
     def _download():
         import boto3
@@ -160,7 +184,7 @@ async def _from_minio_cache(key: str) -> Path | None:
             return None
 
     try:
-        return await loop.run_in_executor(None, _download)
+        return await asyncio.get_running_loop().run_in_executor(None, _download)
     except Exception:
         return None
 
@@ -169,11 +193,9 @@ async def _upload_to_minio(content: bytes, key: str) -> None:
     """Sube el MDB a MinIO como cache."""
     import asyncio
     import io
-    loop = asyncio.get_event_loop()
 
     def _upload():
         import boto3
-        from botocore.exceptions import ClientError
         s3 = boto3.client(
             "s3",
             endpoint_url=f"{'https' if settings.minio_secure else 'http'}://{settings.minio_endpoint}",
@@ -190,4 +212,4 @@ async def _upload_to_minio(content: bytes, key: str) -> None:
         except Exception as e:
             logger.warning("minio_upload_failed", key=key, error=str(e))
 
-    await loop.run_in_executor(None, _upload)
+    await asyncio.get_running_loop().run_in_executor(None, _upload)
