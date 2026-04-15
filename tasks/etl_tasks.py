@@ -92,7 +92,7 @@ def discover_and_ingest(self, years: Optional[list[int]] = None):
     max_retries=3,
     default_retry_delay=60,
     queue="etl",
-    time_limit=300,    # 5 minutos máximo por fichero
+    time_limit=900,    # 15 minutos máximo — los XLSX de gastos son grandes
 )
 def ingest_file(self, file_info_dict: dict):
     """
@@ -103,7 +103,6 @@ def ingest_file(self, file_info_dict: dict):
     from etl.downloader import download_file
     from etl.parsers.xlsx_execution import parse_execution_xlsx
     from etl.loader import load_execution_snapshot
-    from app.db import AsyncSessionLocal
 
     file_info = _dict_to_file(file_info_dict)
 
@@ -115,41 +114,50 @@ def ingest_file(self, file_info_dict: dict):
     )
 
     async def _ingest():
-        from app.db import engine
-        await engine.dispose()   # libera conexiones del loop anterior
-        # 1. Descargar
-        download_result = await download_file(file_info)
+        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+        from app.config import get_settings
+        settings = get_settings()
 
-        # 2. Parsear
-        hint = "expense" if file_info.file_type == FileType.EXECUTION_EXPENSES else "revenue"
-        parse_result = parse_execution_xlsx(download_result.local_path, hint_direction=hint)
+        # Fresh engine per asyncio.run() call — avoids "Future attached to a different loop"
+        _engine = create_async_engine(settings.database_url, pool_size=2, max_overflow=2, pool_pre_ping=True)
+        _Session = async_sessionmaker(bind=_engine, class_=AsyncSession, expire_on_commit=False)
 
-        if not parse_result.lines:
-            logger.warning(
-                "parse_empty_result",
-                filename=file_info.filename,
-                warnings=parse_result.warnings,
-            )
-            return None
-
-        # 3. Cargar en BD
-        async with AsyncSessionLocal() as db:
-            stats = await load_execution_snapshot(
-                db=db,
-                file_info=file_info,
-                parse_result=parse_result,
-                sha256=download_result.sha256,
-                minio_key=download_result.minio_key,
-            )
-            await db.commit()
-
-        # 4. Limpiar temporal
         try:
-            download_result.local_path.unlink(missing_ok=True)
-        except Exception:
-            pass
+            # 1. Descargar
+            download_result = await download_file(file_info)
 
-        return stats
+            # 2. Parsear
+            hint = "expense" if file_info.file_type == FileType.EXECUTION_EXPENSES else "revenue"
+            parse_result = parse_execution_xlsx(download_result.local_path, hint_direction=hint)
+
+            if not parse_result.lines:
+                logger.warning(
+                    "parse_empty_result",
+                    filename=file_info.filename,
+                    warnings=parse_result.warnings,
+                )
+                return None
+
+            # 3. Cargar en BD
+            async with _Session() as db:
+                stats = await load_execution_snapshot(
+                    db=db,
+                    file_info=file_info,
+                    parse_result=parse_result,
+                    sha256=download_result.sha256,
+                    minio_key=download_result.minio_key,
+                )
+                await db.commit()
+
+            # 4. Limpiar temporal
+            try:
+                download_result.local_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+            return stats
+        finally:
+            await _engine.dispose()
 
     try:
         stats = _run(_ingest())
@@ -193,18 +201,25 @@ def compute_metrics(self, fiscal_year: int):
     Se ejecuta automáticamente tras cada ingestión exitosa.
     """
     from services.metrics import RigorMetricsService
-    from app.db import AsyncSessionLocal
 
     logger.info("compute_metrics_start", year=fiscal_year)
 
     async def _compute():
-        from app.db import engine
-        await engine.dispose()   # libera conexiones del loop anterior
-        async with AsyncSessionLocal() as db:
-            service = RigorMetricsService(db)
-            metrics = await service.compute_and_store(fiscal_year)
-            await db.commit()
-            return metrics
+        from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
+        from app.config import get_settings
+        settings = get_settings()
+
+        _engine = create_async_engine(settings.database_url, pool_size=2, max_overflow=2, pool_pre_ping=True)
+        _Session = async_sessionmaker(bind=_engine, class_=AsyncSession, expire_on_commit=False)
+
+        try:
+            async with _Session() as db:
+                service = RigorMetricsService(db)
+                metrics = await service.compute_and_store(fiscal_year)
+                await db.commit()
+                return metrics
+        finally:
+            await _engine.dispose()
 
     try:
         metrics = _run(_compute())

@@ -218,10 +218,11 @@ async def load_execution_snapshot(
         return stats
 
     # ── 3. BudgetSnapshot ────────────────────────────────────────────────────
-    phase = "executed"
     if file_info.file_type == FileType.EXECUTION_EXPENSES:
-        phase = "executed"
+        phase = "executed_expense"
     elif file_info.file_type == FileType.EXECUTION_REVENUES:
+        phase = "executed_revenue"
+    else:
         phase = "executed"
 
     snapshot = BudgetSnapshot(
