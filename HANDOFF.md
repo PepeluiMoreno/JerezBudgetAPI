@@ -4,8 +4,8 @@
 
 API + Dashboard para analizar el **rigor presupuestario** del Ayuntamiento de Jerez de la Frontera y la **situación socioeconómica** de la ciudad, comparándola con municipios de tamaño similar y con medias provinciales, autonómicas y nacionales.
 
-El proyecto responde a dos preguntas:
-1. **¿Gestiona bien el ayuntamiento?** — Precisión presupuestaria, deuda, pago a proveedores.
+Dos preguntas principales:
+1. **¿Gestiona bien el ayuntamiento?** — Precisión presupuestaria, deuda, PMP, RTGG.
 2. **¿Cómo está la ciudad?** — Paro, renta, demografía, turismo, benchmarking.
 
 ---
@@ -14,145 +14,210 @@ El proyecto responde a dos preguntas:
 
 ```
 FastAPI (8015)  ←→  PostgreSQL 16  ←→  MinIO (9000)
-     ↑                   ↑
-Celery workers       Alembic
+     ↑                    ↑
+Celery workers        Alembic
      ↑
   Redis (6379)
      ↑
-Dash dashboard (8050)
+Dash dashboard (8050)   ←→   OpenDataManager / odmgr_app (8000)
 ```
 
-**Celery queues**: `etl` (ingestión XLSX), `metrics` (cálculo rigor)
-**MinIO**: caché de ficheros XLSX descargados (idempotencia HTTP)
+**Celery queues**: `etl` (ingestión XLSX + CONPREL + Cuenta General), `metrics` (cálculo rigor)
 
 ---
 
-## Fuentes de datos actuales
+## Historial de sprints
 
-| Fuente | Qué contiene | Estado |
-|---|---|---|
-| transparencia.jerez.es | Ejecución presupuestaria anual XLSX (gastos + ingresos), 2020–2026 | ✅ ETL activo |
-| CONPREL (Hacienda) | Liquidaciones de 8.000+ municipios, 2010–2024, formato MDB | ✅ ETL activo |
-| INE Padrón | Población municipal anual | 🔄 Vía ODM (pendiente) |
+| Sprint | Commit | Contenido |
+|--------|--------|-----------|
+| S01 | `f6d1c2e` | Fundamentos: modelos ORM, FastAPI esqueleto, docker-compose, Alembic base |
+| S02a | `cff2b22` | Panel admin Jinja2+HTMX — gestión de modificaciones presupuestarias |
+| S02b | `c276cca` | ETL completo: scraper transparencia.jerez.es, parser XLSX, loader, Celery, métricas IPP/ITP/ITR |
+| S03 | `a242efe` | GraphQL (Strawberry) completo + migración Alembic automatizada |
+| S04 | `73bc074` | Modelo BD nacional: catálogo INE municipios, presupuestos CONPREL, peer groups |
+| S05 | `3927501` | ETL CONPREL completo: descarga MDB Hacienda → PostgreSQL (8.000 municipios × 15 años) |
+| S06 | `290ef9f` | Capa OLAP babbage: cubos OLAP vía `/api/3/cubes/` (jerez-rigor, jerez-detail) |
+| S07 | `d62bb72` | Dashboard Dash: tres vistas (`/rigor`, `/explorador`, `/comparativa`) |
+| S08 | `e2b485f` | Producción: Makefile, health checks, configuración CI/CD, nginx |
+| S09 | `c2791f3`–`236a6d4` | Estabilización: arranque stack, corrección ETL CONPREL + INE, event loop fix |
+| **S10** | **`2387bec`** | **ODM integration + Cuenta General scraper (ver detalle abajo)** |
 
 ---
 
-## Modelo de datos (PostgreSQL, schema `public`)
+## Estado actual (S10 completado)
+
+### Lo que funciona hoy
+
+| Capa | Qué hay | Endpoint / tabla |
+|------|---------|-----------------|
+| API REST | Health, admin, OLAP, webhooks ODM | `/health`, `/admin/*`, `/api/3/*`, `/webhooks/odmgr` |
+| GraphQL | Consulta presupuestos Jerez + CONPREL nacional | `/graphql` |
+| ETL Jerez | Scraper + parser XLSX ejecución presupuestaria 2020-2026 | Celery `etl` queue |
+| ETL CONPREL | 8.000 municipios × 15 años, MDB Hacienda | `municipal_budgets`, `municipalities` |
+| ETL INE Padrón | Descarga masiva padrón municipal (todos municipios) | `ine_padron_municipal` |
+| Cuenta General | Scraper rendiciondecuentas.es, 44 KPIs × 7 años (2016-2022) | `cuenta_general_kpis` |
+| Deuda Viva | Sync desde ODM webhook (Hacienda XLSX) | `cuenta_general_kpis` kpi=`deuda_viva` |
+| Dashboard | `/rigor`, `/explorador`, `/comparativa` | Puerto 8050 |
+
+### Modelo de datos completo
 
 ```
-fiscal_years          ← ejercicio presupuestario (2020-2026)
-budget_snapshots      ← un snapshot por fichero XLSX (phase: executed_expense / executed_revenue)
-budget_lines          ← líneas presupuestarias (clasificación eco + func + org)
-economic_classification
-functional_classification
-organic_classification
-rigor_metrics         ← métricas calculadas por ejercicio (IPP, ITP, ITR, score global)
-municipal_budgets     ← presupuestos de municipios nacionales (CONPREL)
-municipalities        ← catálogo de municipios con código INE
-peer_groups           ← grupos de pares para benchmarking
+── Capa 1: Presupuesto Jerez ──────────────────────────────────────────
+fiscal_years              ← ejercicios 2020-2026
+budget_snapshots          ← un snapshot por XLSX (phase: expense / revenue)
+budget_lines              ← líneas presupuestarias
+economic/functional/organic_classification
+rigor_metrics             ← IPP, ITP, ITR, score global por ejercicio
+
+── Capa 2: Nacional (CONPREL + INE) ──────────────────────────────────
+municipalities            ← catálogo INE con código, nombre, provincia, CCAA
+municipal_budgets         ← liquidaciones CONPREL (ingresos/gastos totales)
+municipal_budget_chapter  ← desglose por capítulo
+municipal_budget_program  ← desglose por programa
+peer_groups               ← grupos de pares (180k-250k hab., Andalucía, nacional)
+municipal_population      ← población CONPREL (para cálculos per cápita en CONPREL)
+
+── Capa 3: Socioeconómico (ODM + scrapers) ───────────────────────────
+ine_padron_municipal      ← padrón INE todos municipios (vía ODM webhook)
+cuenta_general_kpis       ← KPIs sostenibilidad (ver tabla completa abajo)
 ```
 
----
+### KPIs en `cuenta_general_kpis` (fuente `rendiciondecuentas_cg`)
 
-## KPIs implementados
+| KPI | Descripción | Unidad |
+|-----|-------------|--------|
+| `remanente_tesoreria_gastos_generales` | RTGG — indicador clave sostenibilidad | EUR |
+| `remanente_tesoreria_total` | Remanente de tesorería total (I) | EUR |
+| `activo_total` | Total activo balance | EUR |
+| `patrimonio_neto` | Patrimonio neto (negativo en Jerez) | EUR |
+| `pasivo_corriente` | Pasivo corriente | EUR |
+| `pasivo_no_corriente` | Pasivo no corriente (deuda LP) | EUR |
+| `activo_corriente` | Activo corriente | EUR |
+| `fondos_liquidos` | Fondos líquidos (tesorería) | EUR |
+| `derechos_pendientes_cobro` | Derechos pendientes de cobro | EUR |
+| `ingresos_gestion_ordinaria_cr` | Total ingresos gestión ordinaria | EUR |
+| `gastos_gestion_ordinaria_cr` | Total gastos gestión ordinaria | EUR |
+| `resultado_gestion_ordinaria` | Ahorro/desahorro ordinario | EUR |
+| `resultado_neto_ejercicio` | Resultado económico-patrimonial neto | EUR |
+| `liquidez_inmediata` | Fondos líquidos / Pasivo corriente | RAT |
+| `liquidez_corto_plazo` | (Fondos + Dtos cobro) / PC | RAT |
+| `liquidez_general` | Activo corriente / Pasivo corriente | RAT |
+| `endeudamiento` | Pasivo total / Activo total | RAT |
+| `endeudamiento_habitante` | (PC + PNC) / Habitantes | EUR/hab |
+| `pmp_acreedores` | Periodo medio de pago a acreedores | días |
+| `periodo_medio_cobro` | Periodo medio de cobro | días |
+| `cobertura_gastos_corrientes` | Gastos / Ingresos gestión ordinaria | RAT |
+| `cash_flow` | Indicador cash-flow | RAT |
+| `ratio_ingresos_tributarios` | Ingresos tributarios / Total | RAT |
+| `ratio_transferencias_recibidas` | Transferencias / Total ingresos | RAT |
+| `ratio_gastos_personal` | Gastos personal / Total gastos | RAT |
+| ... (+ 20 más) | | |
 
-### Rigor presupuestario (disponibles en /api/3/cubes/jerez-rigor)
-| Índice | Fórmula |
-|---|---|
-| **IPP** — Precisión | Obligaciones / Créditos iniciales |
-| **ITP** — Puntualidad | 0 si presupuesto prorrogado; 1 − (días_retraso / 365) si aprobado |
-| **ITR** — Transparencia | Documentos publicados / documentos esperados |
-| **Score Global** | Promedio ponderado IPP·0.4 + ITP·0.3 + ITR·0.3 |
-| Tasa ejecución gasto | Obligaciones reconocidas / Créditos definitivos |
-| Tasa ejecución ingreso | Derechos reconocidos / Previsiones definitivas |
-| Tasa modificación | (Créditos definitivos − iniciales) / iniciales |
-
-### KPIs pendientes de datos adicionales
-| KPI | Fuente necesaria |
-|---|---|
-| Gasto per cápita por capítulo | INE Padrón (ODM) |
-| Presión fiscal municipal | INE Padrón + cap. 1-3 ingresos |
-| PMP (Periodo Medio de Pago) | Hacienda-EL (ODM) |
-| Paro municipal | SEPE (ODM) |
-| Renta media per cápita | INE Atlas Renta (ODM) |
-| Deuda viva / RTGG / ahorro neto | Cuenta General XBRL (ODM) |
-| Pernoctaciones hoteleras | INE EOH (ODM) |
-
----
-
-## Integración con OpenDataManager (ODM)
-
-ODM (`http://odmgr_app:8000`) actúa como hub de datos abiertos. Cuando publica un nuevo dataset, notifica a JerezBudgetAPI vía webhook HMAC-signed en `/webhooks/odmgr`.
-
-**Recursos configurados en ODM que alimentan este proyecto:**
-- `INE - Padrón Municipal` → tabla `ine_padron_municipal`
-- `INE - Atlas Distribución Renta` → tabla `ine_renta_municipal`
-- `INE - Encuesta Ocupación Hotelera` → tabla `ine_eoh_municipal`
-- `SEPE - Paro Registrado por Municipio` → tabla `sepe_paro_municipal`
-- `Hacienda - PMP Entidades Locales` → tabla `hacienda_pmp_el`
-- `Cuenta General XBRL` → tabla `cuenta_general_el`
-
-**Pendiente implementar en JerezBudgetAPI:**
-- Endpoint `POST /webhooks/odmgr` — recibe notificación ODM, descarga JSONL, carga en BD
-- Modelos SQLAlchemy para las tablas nuevas
-- Migración Alembic
-- Cálculo de KPIs per cápita y sostenibilidad
+También en `cuenta_general_kpis` (fuente `hacienda_deuda_viva`):
+- `deuda_viva` — deuda financiera formal (Hacienda InformacionEELLs)
 
 ---
 
-## Dashboard (Dash, puerto 8050)
+## KPIs implementados — rigor presupuestario
 
-### Vistas actuales
-| Ruta | Contenido |
-|---|---|
-| `/rigor` | Score global, IPP/ITP/ITR, histórico 2020-2026, ejecución por capítulo |
-| `/explorador` | Explorador libre de datos OLAP (cube jerez-detail) |
-| `/comparativa` | Benchmarking Jerez vs municipios similares (CONPREL) |
-
-### Vistas planificadas
-| Ruta | Contenido |
-|---|---|
-| `/socioeconomico` | Dashboard ciudad: paro, renta, demografía, turismo vs benchmarks |
-| `/sostenibilidad` | Deuda, RTGG, PMP, ahorro neto — evolución y comparativa |
-| `/cuenta-general` | Balance, liquidación, tesorería desglosados año a año |
+| Índice | Fórmula | Fuente |
+|--------|---------|--------|
+| **IPP** Precisión | Obligaciones / Créditos iniciales | ETL Jerez |
+| **ITP** Puntualidad | 0 si prorrogado; 1 − (días_retraso/365) | ETL Jerez |
+| **ITR** Transparencia | Docs publicados / esperados | ETL Jerez |
+| Score global | IPP×0.4 + ITP×0.3 + ITR×0.3 | calculado |
+| Tasa ejecución gasto | Obligaciones / Créditos definitivos | ETL Jerez |
+| Tasa ejecución ingreso | Derechos / Previsiones definitivas | ETL Jerez |
 
 ---
 
-## Grupo de comparación
+## Roadmap — sprints pendientes
 
-Jerez de la Frontera (213.000 hab.) se compara con:
-- **Municipios 180k–250k hab.** de España (≈ 15 ciudades): Valladolid, Alicante, Vigo, L'Hospitalet, A Coruña, Vitoria, Gijón, Granada, Elche, Oviedo...
-- **Media Andalucía** (ponderada por población)
-- **Media nacional** (ponderada por población)
+### S11 — API Sostenibilidad + KPIs per cápita
+**Objetivo:** exponer los datos de Cuenta General vía API y calcular KPIs per cápita.
 
-El grupo de pares se actualiza anualmente con el Padrón Municipal del INE.
+- [ ] `GET /api/sostenibilidad/jerez` — serie histórica de todos los KPIs de `cuenta_general_kpis`
+- [ ] `GET /api/sostenibilidad/comparativa` — benchmark Jerez vs grupo de pares (deuda/hab, RTGG, PMP)
+- [ ] Cálculo €/habitante para KPIs monetarios (usando `ine_padron_municipal`)
+- [ ] GraphQL: queries `sostenibilidadKpis(nif, ejercicio)` y `comparativaSostenibilidad`
+
+**Datos necesarios:** `cuenta_general_kpis` (✅ cargado), `ine_padron_municipal` (✅ disponible vía ETL)
+
+---
+
+### S12 — Dashboard Sostenibilidad
+**Objetivo:** nueva vista Dash `/sostenibilidad` con evolución temporal y benchmarking.
+
+- [ ] `dashboard/pages/sostenibilidad.py`
+  - Tarjetas RTGG, Deuda viva, PMP, Liquidez (año más reciente)
+  - Gráfico de líneas: evolución 2016-2022 de RTGG, deuda, resultado neto
+  - Benchmark: Jerez vs grupo de pares en €/hab (deuda, RTGG)
+  - Semáforo RAL-LOEPSF: regla gasto, deuda/PIB, estabilidad presupuestaria
+- [ ] `dashboard/pages/cuenta_general.py`
+  - Balance simplificado año a año (activo, pasivo, patrimonio neto)
+  - Cuenta de resultados: ingresos/gastos ordinarios, resultado neto
+  - Indicadores oficiales IndFinYPatri completos
+
+---
+
+### S13 — Dashboard Socioeconómico (datos ODM vía GraphQL)
+**Objetivo:** nueva vista Dash `/socioeconomico` con datos de ciudad desde ODM.
+
+- [ ] Conectar dashboard con ODM GraphQL para:
+  - Paro registrado SEPE por municipio (serie histórica)
+  - Atlas de Distribución de Renta INE (renta neta media)
+  - Encuesta Ocupación Hotelera INE (pernoctaciones turísticas)
+- [ ] Vista `/socioeconomico`: comparativa Jerez vs grupo de pares en paro, renta, turismo
+- [ ] Seedear datos socioeconómicos en ODM (completar fetchers SEPE, INE renta, EOH)
+
+---
+
+### S14 — Informe PDF + exportación
+**Objetivo:** generar informes descargables.
+
+- [ ] `GET /api/informe/jerez/{year}` — PDF con resumen completo (rigor + sostenibilidad + socioeco)
+- [ ] Exportación de cubos a CSV/XLSX desde el explorador del dashboard
 
 ---
 
 ## Operaciones habituales
 
 ```bash
-# Forzar recarga del histórico (tras reset de BD o cambio de parser)
+# Recargar ETL Jerez completo
 docker compose exec api python -c "
-from tasks.etl_tasks import load_historical
-load_historical.apply_async(queue='etl')
+from tasks.etl_tasks import discover_and_ingest
+discover_and_ingest.apply_async(queue='etl')
 "
 
-# Ver estado del worker
+# Recargar Cuenta General histórico (2016-2022)
+docker compose exec worker celery -A tasks.celery_app call \
+  tasks.cuenta_general_tasks.load_historical_cg
+
+# Recargar CONPREL un año concreto
+docker compose exec worker celery -A tasks.celery_app call \
+  tasks.conprel_tasks.ingest_conprel_year --kwargs '{"year": 2023}'
+
+# Ver workers activos
 docker compose exec worker celery -A tasks.celery_app inspect active
 
-# Ejecutar seed ODM (tras cambios en seed_data.py)
-docker compose exec odmgr_app python seed_data.py
+# Reseed ODM (tras cambios en seed_data.py)
+docker compose -f /opt/docker/apps/opendatamanager/docker-compose.yml \
+  exec odmgr_app python seed_data.py
 
-# Acceder a la BD
+# BD
 docker compose exec db psql -U jerezbudget -d jerezbudget
 ```
 
 ---
 
-## Arquitectura de decisiones relevantes
+## Decisiones técnicas relevantes
 
-- **Phase collision fix**: Los snapshots de gastos e ingresos usan `phase="executed_expense"` / `"executed_revenue"` para evitar colisión en la constraint `uq_snapshot_year_date_phase`.
-- **Event loop fix en Celery**: Cada tarea crea su propio `AsyncEngine` dentro de `asyncio.run()` para evitar "Future attached to a different loop". No se reutiliza el engine de `app/db.py` en workers.
-- **MinIO ≠ idempotencia BD**: MinIO cachea ficheros descargados (evita HTTP redundante). La idempotencia de BD se controla por SHA256 en `BudgetSnapshot.source_sha256`. Son mecanismos distintos.
-- **GraphQL opcional**: `strawberry 0.249` es incompatible con `pydantic 2.11+`. La API arranca aunque GraphQL falle (try/except en `app/main.py`).
+| Problema | Solución |
+|----------|----------|
+| Phase collision snapshots | `phase="executed_expense"/"executed_revenue"` en constraint `uq_snapshot_year_date_phase` |
+| Event loop en Celery | Cada tarea llama `engine.dispose()` + `asyncio.run()` propio; no reutiliza el engine global |
+| MinIO vs idempotencia BD | MinIO cachea HTTP (evita re-download); SHA256 en `BudgetSnapshot` controla duplicados en BD |
+| GraphQL incompatibilidad | `strawberry 0.249` incompatible con `pydantic 2.11+`; startup hace try/except, API arranca igual |
+| Double JSESSIONID en scraper | `rendiciondecuentas.es` usa dos cookies JSESSIONID en paths distintos; `httpx` da `CookieConflict`; se usa `requests` |
+| RTGG no calculable desde CONPREL | Requiere caja + derechos/obligaciones no presupuestarias → scraped directamente del portal Tribunal de Cuentas |
+| Deuda Viva (Hacienda) | XLSX público `InformacionEELLs`; miles€ → euros (×1000); código INE 5 dígitos como clave |
