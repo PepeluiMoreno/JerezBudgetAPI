@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     api_secret_key: str = "dev-secret-key-change-in-production"
     cors_origins: list[str] = ["http://localhost:3000", "http://localhost:8015"]
 
+    # ── OpenDataManager (ODM) ────────────────────────────────────
+    odmgr_base_url: str = "http://odmgr_app:8000"
+    odmgr_webhook_secret: str = "dev-odmgr-secret-change-in-production"
+
     # ── Scraping ─────────────────────────────────────────────────
     transparencia_base_url: str = "https://transparencia.jerez.es"
     scrape_interval_hours: int = 24

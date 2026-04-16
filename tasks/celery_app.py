@@ -13,7 +13,7 @@ celery_app = Celery(
     "jerezbudget",
     broker=settings.redis_url,
     backend=settings.redis_url,
-    include=["tasks.etl_tasks", "tasks.conprel_tasks"],
+    include=["tasks.etl_tasks", "tasks.conprel_tasks", "tasks.cuenta_general_tasks"],
 )
 
 celery_app.conf.update(
@@ -43,6 +43,9 @@ celery_app.conf.update(
         "tasks.conprel_tasks.ingest_conprel_year":        {"queue": "etl"},
         "tasks.conprel_tasks.rebuild_peer_groups":        {"queue": "etl"},
         "tasks.conprel_tasks.load_historical_conprel":    {"queue": "etl"},
+        # Capa 3 — Cuenta General (rendiciondecuentas.es)
+        "tasks.cuenta_general_tasks.scrape_cuenta_general_year": {"queue": "etl"},
+        "tasks.cuenta_general_tasks.load_historical_cg":          {"queue": "etl"},
     },
 
     # Scheduler periódico
@@ -64,6 +67,12 @@ celery_app.conf.update(
             "task": "tasks.conprel_tasks.seed_ine_population",
             "schedule": crontab(month_of_year=7, day_of_month=15, hour=5, minute=0),
             "kwargs": {},
+        },
+        # Capa 3: refrescar Cuenta General (julio — rendiciondecuentas publica en verano)
+        "annual-cuenta-general": {
+            "task": "tasks.cuenta_general_tasks.load_historical_cg",
+            "schedule": crontab(month_of_year=7, day_of_month=20, hour=6, minute=0),
+            "kwargs": {},   # carga todos los ejercicios disponibles (idempotente)
         },
     },
 )

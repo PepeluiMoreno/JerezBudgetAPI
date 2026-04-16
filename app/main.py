@@ -17,6 +17,7 @@ from app.db import engine
 from api.health import router as health_router
 from api.admin import router as admin_router
 from api.olap.router import router as olap_router
+from api.webhooks import router as webhooks_router
 
 try:
     from graphql.schema import create_graphql_router as _create_graphql_router
@@ -85,6 +86,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router)
     app.include_router(admin_router)
     app.include_router(olap_router)
+    app.include_router(webhooks_router)
 
     # GraphQL — accesible en /graphql (con GraphiQL en modo dev)
     if _graphql_available:

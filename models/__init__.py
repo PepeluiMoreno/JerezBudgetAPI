@@ -22,6 +22,10 @@ from models.national import (
     PeerGroup,
     PeerGroupMember,
 )
+from models.socioeconomic import (
+    InePadronMunicipal,
+    CuentaGeneralKpi,
+)
 
 __all__ = [
     # Capa 1 — JerezBudget
@@ -42,4 +46,7 @@ __all__ = [
     "MunicipalBudgetProgram",
     "PeerGroup",
     "PeerGroupMember",
+    # Capa 3 — Socioeconómico ODM
+    "InePadronMunicipal",
+    "CuentaGeneralKpi",
 ]
