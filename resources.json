@@ -1,0 +1,44 @@
+[
+  {
+    "name": "jerez-ejecucion-gastos",
+    "description": "Ejecución presupuestaria de gastos del Ayuntamiento de Jerez. Datos mensuales en XLSX por ejercicio fiscal.",
+    "fetcherCode": "PDF_PAGE",
+    "active": true,
+    "params": [
+      { "key": "url_template",  "value": "https://transparencia.jerez.es/infopublica/economica/presupuesto/{ejercicio}" },
+      { "key": "url_overrides", "value": "{\"2026\": \"https://transparencia.jerez.es/infopublica/economica/presupuesto/2026/prorroga-2025\"}" },
+      { "key": "pdf_dir",       "value": "data/pdfs/jerez/presupuesto/{ejercicio}/gastos" },
+      { "key": "link_selector", "value": "a[href$='.xlsx']" },
+      { "key": "script_module", "value": "etl.scripts.execution_expenses" },
+      { "key": "delay_seconds", "value": "1.0" }
+    ]
+  },
+  {
+    "name": "jerez-ejecucion-ingresos",
+    "description": "Ejecución presupuestaria de ingresos del Ayuntamiento de Jerez. Datos mensuales en XLSX por ejercicio fiscal.",
+    "fetcherCode": "PDF_PAGE",
+    "active": true,
+    "params": [
+      { "key": "url_template",  "value": "https://transparencia.jerez.es/infopublica/economica/presupuesto/{ejercicio}" },
+      { "key": "url_overrides", "value": "{\"2026\": \"https://transparencia.jerez.es/infopublica/economica/presupuesto/2026/prorroga-2025\"}" },
+      { "key": "pdf_dir",       "value": "data/pdfs/jerez/presupuesto/{ejercicio}/ingresos" },
+      { "key": "link_selector", "value": "a[href$='.xlsx']" },
+      { "key": "script_module", "value": "etl.scripts.execution_revenues" },
+      { "key": "delay_seconds", "value": "1.0" }
+    ]
+  },
+  {
+    "name": "jerez-modificaciones-presupuestarias",
+    "description": "Modificaciones presupuestarias del Ayuntamiento de Jerez. Metadatos extraídos de PDFs por ejercicio fiscal.",
+    "fetcherCode": "PDF_PAGE",
+    "active": true,
+    "params": [
+      { "key": "url_template",  "value": "https://transparencia.jerez.es/infopublica/economica/presupuesto/{ejercicio}" },
+      { "key": "url_overrides", "value": "{\"2026\": \"https://transparencia.jerez.es/infopublica/economica/presupuesto/2026/prorroga-2025\"}" },
+      { "key": "pdf_dir",       "value": "data/pdfs/jerez/presupuesto/{ejercicio}/modificaciones" },
+      { "key": "link_selector", "value": "a[href$='.pdf']" },
+      { "key": "script_module", "value": "etl.scripts.budget_modifications" },
+      { "key": "delay_seconds", "value": "1.5" }
+    ]
+  }
+]
