@@ -1,0 +1,168 @@
+code,description,direction
+10000,IBI — Bienes Inmuebles de Naturaleza Rústica,revenue
+11200,IVTM — Impuesto sobre Vehículos de Tracción Mecánica,revenue
+11300,IBI — Bienes Inmuebles de Naturaleza Urbana,revenue
+11400,IBI — Bienes Inmuebles de Características Especiales,revenue
+11500,Impuesto sobre Incremento del Valor de los Terrenos de Naturaleza Urbana (IIVTNU / Plusvalía),revenue
+11600,IAE — Impuesto sobre Actividades Económicas,revenue
+13000,"ICIO — Impuesto sobre Construcciones, Instalaciones y Obras",revenue
+13001,"ICIO — Construcciones, Instalaciones y Obras (complementario)",revenue
+13002,"ICIO — Construcciones, Instalaciones y Obras (liquidaciones)",revenue
+21000,ITP y AJD — Impuesto sobre Transmisiones Patrimoniales y Actos Jurídicos Documentados,revenue
+22000,ITP y AJD — Operaciones societarias,revenue
+22001,ITP y AJD — Transmisiones patrimoniales onerosas,revenue
+22003,ITP y AJD — Documentos administrativos,revenue
+22004,ITP y AJD — Documentos notariales,revenue
+22006,ITP y AJD — Actos jurídicos documentados,revenue
+29000,Otros impuestos indirectos,revenue
+29100,Recargo provincial sobre el IAE,revenue
+30001,Tasa por suministro de agua potable,revenue
+30200,"Tasa por recogida, tratamiento y eliminación de residuos sólidos",revenue
+30901,Tasa por servicios de alcantarillado y depuración,revenue
+30902,Tasa por entradas de vehículos (vados),revenue
+30903,Tasa por aprovechamiento del dominio público (terrazas y veladores),revenue
+32100,Tasa por servicios urbanísticos — licencias de obras y actividades,revenue
+32201,Tasa por expedición de documentos administrativos,revenue
+32500,Tasa por estacionamiento de vehículos (ORA / zona azul),revenue
+32600,Tasa por utilización privativa del dominio público local,revenue
+32901,Tasa por prestación de servicios de cementerio,revenue
+33000,Tasa por servicio de mercados,revenue
+33100,Tasa por servicio de matadero,revenue
+33204,Tasa por servicios culturales y actividades educativas,revenue
+33401,Tasa por instalaciones deportivas municipales,revenue
+33501,Tasa por escuelas y talleres municipales,revenue
+33601,Tasa por servicio de guardería y escuelas infantiles,revenue
+33701,Tasa por servicios de ayuda a domicilio y centros de día,revenue
+33800,Tasa por servicios de protección civil,revenue
+33901,Precio público por servicio de transporte urbano colectivo,revenue
+33902,Precio público por espectáculos y actividades de ocio,revenue
+33903,Precio público por visitas guiadas y turismo,revenue
+33904,Precio público por servicios de telefonía y comunicaciones,revenue
+33905,Precio público por uso de instalaciones municipales,revenue
+33906,Precio público por servicios informáticos y de reprografía,revenue
+33907,Precio público por cursos y actividades formativas,revenue
+33908,Precio público por servicios veterinarios municipales,revenue
+34101,Precio público por uso de quioscos y puestos en vía pública,revenue
+34201,Canon por concesión de servicio de abastecimiento de agua,revenue
+34202,Canon por concesión de servicio de alcantarillado,revenue
+34301,Canon por concesión de servicio de recogida de residuos,revenue
+34302,Canon por otras concesiones de servicios locales,revenue
+34303,Canon por concesión de instalaciones deportivas,revenue
+34403,Canon por explotación de instalaciones culturales,revenue
+34404,Canon por explotación de mercados municipales,revenue
+34405,Canon por explotación de aparcamientos municipales,revenue
+34410,Otras tasas por aprovechamiento especial del dominio público,revenue
+34903,Tasa por servicio de grúa y depósito de vehículos,revenue
+34905,Tasa por tramitación de expedientes de disciplina urbanística,revenue
+34906,Tasa por empadronamiento y registro civil,revenue
+34907,Tasa por servicios de inspección y control,revenue
+34908,Tasa por licencias de actividades e instalaciones (apertura),revenue
+34909,Tasa por utilización de la vía pública — publicidad,revenue
+34910,Tasa por distribución de agua no potable,revenue
+34912,Otras tasas por servicios municipales,revenue
+36002,Precio público por publicidad en instalaciones municipales,revenue
+36003,Precio público por servicios prestados a otras administraciones,revenue
+36400,"Precio público por enseñanzas especiales (música, idiomas, etc.)",revenue
+38000,Reintegros por operaciones corrientes — ejercicio corriente,revenue
+38001,Reintegros por operaciones corrientes — ejercicios cerrados,revenue
+38002,Reintegros de ayudas y subvenciones concedidas,revenue
+38900,Otros reintegros,revenue
+38901,Reintegros por seguros y compensaciones,revenue
+38902,Reintegros por indemnizaciones y responsabilidades,revenue
+39100,Multas de tráfico y circulación de vehículos,revenue
+39110,Multas por infracciones urbanísticas,revenue
+39120,Multas por infracciones de ordenanzas municipales,revenue
+39190,Otras multas y sanciones administrativas,revenue
+39191,Multas por infracciones medioambientales,revenue
+39192,Multas por infracciones de comercio y mercados,revenue
+39211,Recargo de apremio,revenue
+39212,Intereses de demora en deudas tributarias,revenue
+39300,Compensaciones y resarcimientos,revenue
+39301,Indemnizaciones por daños a bienes municipales,revenue
+39610,Ingresos por publicidad en medios municipales,revenue
+39690,Otros ingresos varios corrientes,revenue
+39710,Ingresos por venta de bienes deteriorados o inservibles,revenue
+39901,Ingresos por licencias urbanísticas (tramitación),revenue
+39902,Cuotas de urbanización y compensación,revenue
+39907,Ingresos por convenios urbanísticos,revenue
+39911,Ingresos de la Agencia Tributaria (recaudación ejecutiva),revenue
+39912,Ingresos por aplazamientos y fraccionamientos de deuda,revenue
+39913,Intereses de cuentas bancarias y depósitos corrientes,revenue
+39916,Ingresos por gestión recaudatoria de tributos locales,revenue
+39918,Ingresos eventuales — reintegros de anticipos a personal,revenue
+39919,Ingresos eventuales — cuotas de urbanización exigibles,revenue
+39920,Otros ingresos eventuales no clasificados,revenue
+39921,Ingresos por sanciones contractuales,revenue
+39922,Ingresos por donaciones y legados no especificados,revenue
+39923,Ingresos por ventas de publicaciones y mapas,revenue
+39924,Ingresos por prestación de servicios a organismos autónomos,revenue
+39925,Ingresos eventuales — otros conceptos,revenue
+42001,Transferencias corrientes del Estado — participación en tributos del Estado (PIE),revenue
+42007,Transferencias corrientes del Estado — programas de empleo (SEPE),revenue
+42010,Transferencias corrientes del Estado — Fondo de Compensación Interterritorial,revenue
+42020,Transferencias corrientes del Estado — Fondo Complementario de Financiación,revenue
+42090,Otras transferencias corrientes del Estado,revenue
+42092,Transferencias del Estado — Plan de Ajuste,revenue
+42093,Transferencias del Estado — financiación de servicios sociales,revenue
+42094,Transferencias del Estado — otros fondos finalistas,revenue
+42101,Transferencias corrientes del Estado — PIE ajuste negativo,revenue
+42106,Transferencias del Estado — financiación de empleo público,revenue
+42124,Transferencias del Estado — programas de formación y empleo,revenue
+42190,Otras transferencias corrientes del Estado — fondos no finalizados,revenue
+45000,Transferencias corrientes de la Comunidad Autónoma — Participación en tributos autonómicos,revenue
+45002,Transferencias corrientes de la CA — Fondo de Nivelación,revenue
+45030,Transferencias corrientes de la CA — servicios sociales y dependencia,revenue
+45050,Transferencias corrientes de la CA — empleo y formación,revenue
+45060,Transferencias corrientes de la CA — medio ambiente,revenue
+45080,Transferencias corrientes de la CA — plan de obras y servicios,revenue
+45081,Transferencias corrientes de la CA — otros planes y programas,revenue
+45100,Transferencias corrientes de Diputación Provincial — Participación en tributos provinciales,revenue
+45106,Transferencias corrientes de Diputación — plan provincial de obras,revenue
+45107,Transferencias corrientes de Diputación — otros planes,revenue
+45108,Transferencias corrientes de Diputación — fondos finalistas,revenue
+46117,Transferencias corrientes de otros entes locales,revenue
+46600,Transferencias de mancomunidades y consorcios locales,revenue
+46800,Transferencias corrientes de organismos autónomos municipales,revenue
+47000,Transferencias corrientes de empresas privadas,revenue
+48000,Transferencias corrientes de familias e instituciones sin ánimo de lucro,revenue
+49100,"Transferencias corrientes de la UE (FSE, FEDER — corrientes)",revenue
+49700,Otras transferencias corrientes del exterior,revenue
+49701,Transferencias de organismos internacionales,revenue
+51100,Intereses de valores de renta fija,revenue
+51400,Intereses de cuentas bancarias y depósitos a largo plazo,revenue
+52000,Dividendos y participación en beneficios de sociedades municipales,revenue
+53400,Arrendamiento de inmuebles municipales,revenue
+53410,Arrendamiento de locales comerciales municipales,revenue
+54100,Productos de concesiones y aprovechamientos especiales,revenue
+55000,Ingresos por explotación del patrimonio forestal y rural,revenue
+55903,Otros ingresos patrimoniales,revenue
+59002,Ingresos del patrimonio histórico-artístico,revenue
+59900,Otros ingresos patrimoniales no clasificados,revenue
+59901,Ingresos patrimoniales eventuales,revenue
+60000,Enajenación de terrenos del patrimonio municipal del suelo,revenue
+60300,Enajenación de solares y bienes inmuebles municipales,revenue
+61000,"Enajenación de maquinaria, instalaciones y utillaje",revenue
+61901,Enajenación de otros bienes inventariables,revenue
+72000,Transferencias de capital del Estado — Plan de Inversiones,revenue
+72001,Transferencias de capital del Estado — FEDER inversiones,revenue
+75030,Transferencias de capital de la CA — inversiones en infraestructura,revenue
+75060,Transferencias de capital de la CA — fondos de desarrollo local,revenue
+75080,Transferencias de capital de la CA — plan de inversiones locales,revenue
+75081,Transferencias de capital de la CA — otros planes de inversión,revenue
+75100,Transferencias de capital de Diputación Provincial,revenue
+76100,Transferencias de capital de otros entes locales,revenue
+76800,Transferencias de capital de organismos autónomos municipales,revenue
+77000,Transferencias de capital de empresas privadas,revenue
+78001,Transferencias de capital de instituciones sin ánimo de lucro,revenue
+79700,"Transferencias de capital de la UE (FEDER, FC)",revenue
+79701,Transferencias de capital de organismos internacionales,revenue
+82120,Préstamos recibidos de entidades financieras — corto plazo,revenue
+83001,Préstamos recibidos de entidades financieras — largo plazo,revenue
+83101,Préstamos del Banco Europeo de Inversiones (BEI),revenue
+87000,Remanente de Tesorería para gastos generales,revenue
+87010,Remanente de Tesorería para gastos con financiación afectada,revenue
+91000,Amortización de préstamos a corto plazo,revenue
+91100,Amortización de préstamos a largo plazo — entidades financieras,revenue
+91101,Amortización anticipada de préstamos,revenue
+91300,Amortización de deudas por operaciones de arrendamiento financiero,revenue
+91301,Cancelación de deudas a largo plazo — otros acreedores,revenue

@@ -55,6 +55,27 @@ class Municipality(Base):
     ccaa_code: Mapped[str] = mapped_column(String(2), nullable=False, index=True)
     ccaa_name: Mapped[str] = mapped_column(Text, nullable=False)
 
+    # Superficie del término municipal en km² (INE Nomenclator)
+    superficie_km2: Mapped[Optional[float]] = mapped_column(
+        Numeric(10, 2), nullable=True,
+        comment="Superficie del término municipal en km² (INE Nomenclator)"
+    )
+
+    # ── Datos geográficos (OpenStreetMap) ────────────────────────────────────
+    # Permiten consultar Overpass API, Nominatim y mostrar capas en mapas.
+    osm_relation_id: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True, index=True,
+        comment="OSM relation ID del límite administrativo (ej: 340744 para Jerez)"
+    )
+    lat: Mapped[Optional[float]] = mapped_column(
+        Numeric(9, 6), nullable=True,
+        comment="Latitud del centroide (WGS84)"
+    )
+    lon: Mapped[Optional[float]] = mapped_column(
+        Numeric(9, 6), nullable=True,
+        comment="Longitud del centroide (WGS84)"
+    )
+
     # Población más reciente (desnormalizado para consultas rápidas)
     population: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     population_year: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
@@ -78,10 +99,6 @@ class Municipality(Base):
     peer_memberships: Mapped[list[PeerGroupMember]] = relationship(
         back_populates="municipality"
     )
-
-    @property
-    def is_jerez(self) -> bool:
-        return self.ine_code == "11020"
 
     def __repr__(self) -> str:
         return f"<Municipality {self.ine_code} {self.name}>"

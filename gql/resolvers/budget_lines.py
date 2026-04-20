@@ -16,7 +16,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from graphql.types import BudgetLineFilter, BudgetLinePage, BudgetLineType
+from gql.types import BudgetLineFilter, BudgetLinePage, BudgetLineType
 from models.budget import (
     BudgetLine,
     BudgetSnapshot,

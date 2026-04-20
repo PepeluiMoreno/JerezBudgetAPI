@@ -1,5 +1,5 @@
 """
-Aplicación FastAPI — JerezBudget API.
+Aplicación FastAPI — CityDashboard API.
 Punto de entrada para Uvicorn.
 """
 import logging
@@ -20,7 +20,7 @@ from api.olap.router import router as olap_router
 from api.webhooks import router as webhooks_router
 
 try:
-    from graphql.schema import create_graphql_router as _create_graphql_router
+    from gql.schema import create_graphql_router as _create_graphql_router
     _graphql_available = True
 except Exception as _graphql_err:
     import logging
@@ -45,12 +45,12 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info(
-        "JerezBudget API arrancando",
+        "CityDashboard API arrancando",
         version=settings.app_version,
         debug=settings.api_debug,
     )
     yield
-    logger.info("JerezBudget API apagando")
+    logger.info("CityDashboard API apagando")
     await engine.dispose()
 
 
@@ -60,9 +60,9 @@ def create_app() -> FastAPI:
         title=settings.app_name,
         version=settings.app_version,
         description=(
-            "API GraphQL para el análisis del rigor presupuestario del "
-            "Ayuntamiento de Jerez de la Frontera. "
-            "Compatible con OpenBudgets / Fiscal Data Package."
+            "CityDashboard — Panel de Control Municipal. "
+            "API GraphQL modular para gestión presupuestaria, RRHH, "
+            "calidad de servicios y datos socioeconómicos municipales."
         ),
         docs_url="/docs",
         redoc_url="/redoc",

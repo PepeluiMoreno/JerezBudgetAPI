@@ -198,11 +198,13 @@ async def load_execution_snapshot(
     )
     fy = fy_result.scalar_one_or_none()
     if not fy:
+        # Prórrogas conocidas: el presupuesto del año anterior se extiende al siguiente
+        _EXTENSIONS = {2023: 2022, 2026: 2025}
         fy = FiscalYear(
             year=fiscal_year,
             status="draft",
-            is_extension=(fiscal_year == 2026),
-            extended_from_year=2025 if fiscal_year == 2026 else None,
+            is_extension=fiscal_year in _EXTENSIONS,
+            extended_from_year=_EXTENSIONS.get(fiscal_year),
         )
         db.add(fy)
         await db.flush()

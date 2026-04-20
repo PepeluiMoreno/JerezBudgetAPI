@@ -31,7 +31,6 @@ Uso:
 from __future__ import annotations
 
 import html as html_module
-import logging
 import re
 from decimal import Decimal, InvalidOperation
 from typing import Optional
@@ -39,7 +38,8 @@ from typing import Optional
 import requests
 from bs4 import BeautifulSoup
 
-logger = logging.getLogger(__name__)
+import structlog
+logger = structlog.get_logger(__name__)
 
 _BASE = "https://www.rendiciondecuentas.es"
 _VIZ  = _BASE + "/VisualizadorPortalCiudadano"

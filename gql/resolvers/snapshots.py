@@ -9,7 +9,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from graphql.types import BudgetSnapshotType
+from gql.types import BudgetSnapshotType
 from models.budget import BudgetSnapshot, FiscalYear
 
 

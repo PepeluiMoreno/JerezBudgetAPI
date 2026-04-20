@@ -1,7 +1,7 @@
 [tool.poetry]
-name = "jerezbudget-api"
-version = "0.1.0"
-description = "API GraphQL de rigor presupuestario - Ayuntamiento de Jerez"
+name = "citydashboard"
+version = "0.2.0"
+description = "CityDashboard — Panel de Control Municipal modular para ciudades españolas"
 authors = ["PepeluiMoreno"]
 readme = "README.md"
 packages = [{ include = "app" }, { include = "models" }, { include = "graphql" }]
@@ -29,6 +29,7 @@ greenlet = "^3.1"
 # ETL (Sprint 02 — se declaran ya para no tocar pyproject después)
 httpx = "^0.28"
 openpyxl = "^3.1"
+xlrd = "^2.0"          # lectura de .xls legacy (2023 y anteriores)
 pandas = "^2.2"
 pdfplumber = "^0.11"
 beautifulsoup4 = "^4.12"

@@ -3,19 +3,19 @@ services:
   # ── Base de datos ───────────────────────────────────────────────
   db:
     image: postgres:16-alpine
-    container_name: jerezbudget_db
+    container_name: citydashboard_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${DB_NAME:-jerezbudget}
-      POSTGRES_USER: ${DB_USER:-jerezbudget}
+      POSTGRES_DB: ${DB_NAME:-citydashboard_db}
+      POSTGRES_USER: ${DB_USER:-citydashboard}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - pg_data:/var/lib/postgresql/data
       - ./scripts/init_db.sql:/docker-entrypoint-initdb.d/init.sql:ro
     ports:
-      - "54322:54322"                 # sólo dev — quitar en producción
+      - "54322:5432"                  # sólo dev — quitar en producción
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-jerezbudget} -d ${DB_NAME:-jerezbudget}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-citydashboard} -d ${DB_NAME:-citydashboard_db}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -23,7 +23,7 @@ services:
   # ── Broker / Cache ──────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: jerezbudget_redis
+    container_name: citydashboard_redis
     restart: unless-stopped
     command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
     volumes:
@@ -36,7 +36,7 @@ services:
   # ── Almacenamiento de ficheros fuente (S3-compatible) ───────────
   minio:
     image: minio/minio:latest
-    container_name: jerezbudget_minio
+    container_name: citydashboard_minio
     restart: unless-stopped
     command: server /data --console-address ":9001"
     environment:
@@ -57,12 +57,12 @@ services:
     build:
       context: .
       target: runtime
-    container_name: jerezbudget_api
+    container_name: citydashboard_api
     restart: unless-stopped
     command: uvicorn app.main:app --host 0.0.0.0 --port 8015 --workers 2
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${DB_USER:-jerezbudget}:${DB_PASSWORD}@db/${DB_NAME:-jerezbudget}
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-citydashboard}:${DB_PASSWORD}@db/${DB_NAME:-citydashboard_db}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       MINIO_ENDPOINT: minio:9000
     ports:
@@ -73,19 +73,19 @@ services:
       redis:
         condition: service_healthy
     volumes:
-      - .:/app                      # hot-reload en dev; quitar en producción
+      - .:/app                        # hot-reload en dev; quitar en producción
 
   # ── Worker Celery (ETL + métricas) ──────────────────────────────
   worker:
     build:
       context: .
       target: runtime
-    container_name: jerezbudget_worker
+    container_name: citydashboard_worker
     restart: unless-stopped
     command: celery -A tasks.celery_app worker --loglevel=info -Q etl,metrics -c 4
     env_file: .env
     environment:
-      DATABASE_URL: postgresql+asyncpg://${DB_USER:-jerezbudget}:${DB_PASSWORD}@db/${DB_NAME:-jerezbudget}
+      DATABASE_URL: postgresql+asyncpg://${DB_USER:-citydashboard}:${DB_PASSWORD}@db/${DB_NAME:-citydashboard_db}
       REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379/0
       MINIO_ENDPOINT: minio:9000
     depends_on:
@@ -99,7 +99,7 @@ services:
     build:
       context: .
       target: runtime
-    container_name: jerezbudget_beat
+    container_name: citydashboard_beat
     restart: unless-stopped
     command: celery -A tasks.celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler
     env_file: .env
@@ -108,30 +108,21 @@ services:
     depends_on:
       - redis
 
-  # ── Dashboard Dash (Capa 3 — Visualización) ─────────────────────────────────
-  dashboard:
+  # ── Frontend Vue 3 (SPA) ────────────────────────────────────────
+  frontend:
     build:
-      context: .
-      target: runtime
-    container_name: jerezbudget_dashboard
+      context: ./frontend
+    container_name: citydashboard_frontend
     restart: unless-stopped
-    command: python dashboard/app.py
-    env_file: .env
-    environment:
-      BABBAGE_BASE_URL: http://api:8015/api/3
-      DASH_HOST: 0.0.0.0
-      DASH_PORT: "8050"
-      DASH_DEBUG: "false"
-      API_PUBLIC_URL: http://optiplex-790:8015
     ports:
-      - "8050:8050"
+      - "8080:8080"
     depends_on:
       - api
 
   # ── Flower (monitor Celery) ─────────────────────────────────────
   flower:
     image: mher/flower:1.2
-    container_name: jerezbudget_flower
+    container_name: citydashboard_flower
     restart: unless-stopped
     command: celery flower --port=5555
     environment:

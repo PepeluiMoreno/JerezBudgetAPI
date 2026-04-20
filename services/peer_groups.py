@@ -5,10 +5,11 @@ Tras cada ingestión de catálogo INE o CONPREL, recalcula
 qué municipios pertenecen a cada peer group dinámico.
 
 Un grupo dinámico tiene criteria JSONB con campos:
-  - pop_min / pop_max    → rango de población
-  - ccaa_code            → filtro por CCAA
-  - province_code        → filtro por provincia
-  - ine_codes            → lista explícita (grupos estáticos)
+  - pop_min / pop_max        → rango de población
+  - surface_min / surface_max → rango de superficie en km²
+  - ccaa_code                → filtro por CCAA
+  - province_code            → filtro por provincia
+  - ine_codes                → lista explícita (grupos estáticos)
 """
 from __future__ import annotations
 
@@ -21,9 +22,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from models.national import Municipality, PeerGroup, PeerGroupMember
 
 logger = structlog.get_logger(__name__)
-
-# Código INE de Jerez — constante de referencia
-JEREZ_INE = "11020"
 
 
 async def rebuild_dynamic_peer_groups(db: AsyncSession) -> dict[str, int]:
@@ -63,6 +61,14 @@ async def _rebuild_group(db: AsyncSession, group: PeerGroup) -> int:
     if pop_max:
         q = q.where(Municipality.population <= pop_max)
 
+    # Filtro por rango de superficie en km²
+    surface_min = criteria.get("surface_min")
+    surface_max = criteria.get("surface_max")
+    if surface_min is not None:
+        q = q.where(Municipality.superficie_km2 >= surface_min)
+    if surface_max is not None:
+        q = q.where(Municipality.superficie_km2 <= surface_max)
+
     # Filtro por CCAA
     ccaa_code = criteria.get("ccaa_code")
     if ccaa_code:
@@ -96,13 +102,12 @@ async def _rebuild_group(db: AsyncSession, group: PeerGroup) -> int:
     return len(members)
 
 
-async def get_jerez_peer_group(
+async def get_peer_group_municipalities(
     db: AsyncSession,
-    slug: str = "andalucia-100k-250k",
+    slug: str,
 ) -> list[Municipality]:
     """
-    Devuelve los municipios del grupo de pares de Jerez.
-    Útil para el dashboard y las queries de comparativa.
+    Devuelve los municipios de un peer group ordenados por población desc.
     """
     result = await db.execute(
         select(Municipality)
@@ -119,26 +124,84 @@ async def get_peer_group_ine_codes(
     slug: str,
 ) -> list[str]:
     """Devuelve solo los códigos INE del grupo (para filtros SQL)."""
-    muns = await get_jerez_peer_group(db, slug)
+    muns = await get_peer_group_municipalities(db, slug)
     return [m.ine_code for m in muns]
 
 
-async def ensure_jerez_in_all_groups(db: AsyncSession) -> None:
+async def ensure_city_in_all_groups(db: AsyncSession) -> None:
     """
-    Garantiza que Jerez (11020) esté en todos los peer groups
-    donde debería estar por criterios. Se llama tras el seeding.
+    Garantiza que el municipio propio (settings.city_ine_code) esté en todos
+    los peer groups donde debería estar por criterios. Se llama tras el seeding.
     """
+    from app.config import get_settings
+    settings = get_settings()
+
     result = await db.execute(
-        select(Municipality).where(Municipality.ine_code == JEREZ_INE)
+        select(Municipality).where(Municipality.ine_code == settings.city_ine_code)
     )
-    jerez = result.scalar_one_or_none()
-    if not jerez:
-        logger.warning("jerez_not_found_in_municipalities")
+    city = result.scalar_one_or_none()
+    if not city:
+        logger.warning("city_not_found_in_municipalities", ine_code=settings.city_ine_code)
         return
 
     logger.info(
-        "jerez_found",
-        name=jerez.name,
-        population=jerez.population,
-        ccaa=jerez.ccaa_name,
+        "city_found",
+        name=city.name,
+        population=city.population,
+        ccaa=city.ccaa_name,
     )
+
+
+def ensure_default_peer_groups_exist(criteria_list: list[dict]) -> list[dict]:
+    """
+    Genera las definiciones de los peer groups estándar a partir de la config.
+    Retorna lista de dicts {slug, name, description, criteria, is_dynamic}.
+
+    Se llama desde scripts/seed_peer_groups.py tras el seeding de municipios.
+    """
+    from app.config import get_settings
+    s = get_settings()
+
+    surface = s.city_surface_km2
+    margin = surface * s.peer_surface_margin_pct / 100.0
+
+    return [
+        {
+            "slug": "nacional-150k-250k",
+            "name": f"España — {s.peer_pop_min // 1000}k–{s.peer_pop_max // 1000}k habitantes",
+            "description": (
+                f"Municipios españoles con población entre "
+                f"{s.peer_pop_min:,} y {s.peer_pop_max:,} habitantes"
+            ),
+            "criteria": {"pop_min": s.peer_pop_min, "pop_max": s.peer_pop_max},
+            "is_dynamic": True,
+        },
+        {
+            "slug": f"ccaa-{s.city_ccaa_code}-150k-250k",
+            "name": f"{s.city_ccaa_name} — {s.peer_pop_min // 1000}k–{s.peer_pop_max // 1000}k habitantes",
+            "description": (
+                f"Municipios de {s.city_ccaa_name} con población entre "
+                f"{s.peer_pop_min:,} y {s.peer_pop_max:,} habitantes"
+            ),
+            "criteria": {
+                "pop_min": s.peer_pop_min,
+                "pop_max": s.peer_pop_max,
+                "ccaa_code": s.city_ccaa_code,
+            },
+            "is_dynamic": True,
+        },
+        {
+            "slug": "nacional-superficie-similar",
+            "name": f"España — superficie similar a {s.city_name}",
+            "description": (
+                f"Municipios españoles con término municipal de "
+                f"{surface - margin:.0f}–{surface + margin:.0f} km² "
+                f"({s.city_name} ≈ {surface:.0f} km², ±{s.peer_surface_margin_pct:.0f}%)"
+            ),
+            "criteria": {
+                "surface_min": round(surface - margin, 2),
+                "surface_max": round(surface + margin, 2),
+            },
+            "is_dynamic": True,
+        },
+    ]

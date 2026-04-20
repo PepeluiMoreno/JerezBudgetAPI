@@ -11,7 +11,7 @@ import strawberry
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from graphql.types import BudgetModificationType
+from gql.types import BudgetModificationType
 from models.budget import BudgetModification, FiscalYear
 
 

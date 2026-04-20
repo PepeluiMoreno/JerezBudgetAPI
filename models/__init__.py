@@ -10,6 +10,7 @@ from models.budget import (
     EconomicClassification,
     FiscalYear,
     FunctionalClassification,
+    MunicipalEntity,
     OrganicClassification,
     RigorMetrics,
 )
@@ -23,12 +24,15 @@ from models.national import (
     PeerGroupMember,
 )
 from models.socioeconomic import (
-    InePadronMunicipal,
+    CeselKpi,
     CuentaGeneralKpi,
+    EtlValidationException,
+    InePadronMunicipal,
+    KpiThreshold,
 )
 
 __all__ = [
-    # Capa 1 — JerezBudget
+    # Capa 1 — CityDashboard (presupuesto propio)
     "Base",
     "FiscalYear",
     "EconomicClassification",
@@ -49,4 +53,10 @@ __all__ = [
     # Capa 3 — Socioeconómico ODM
     "InePadronMunicipal",
     "CuentaGeneralKpi",
+    # Capa 4 — Sostenibilidad y KPIs financieros
+    "EtlValidationException",
+    "CeselKpi",
+    "KpiThreshold",
+    # Capa 5 — Infraestructura análisis
+    "MunicipalEntity",
 ]

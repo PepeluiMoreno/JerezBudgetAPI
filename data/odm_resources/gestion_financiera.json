@@ -1,0 +1,146 @@
+[
+  {
+    "name": "Jerez - Periodo Medio de Pago (Ayuntamiento y Empresas Municipales)",
+    "fetcher_name": "FILE_SERIES",
+    "publisher_acronimo": "AJFRA",
+    "target_table": "jerez_pmp_mensual",
+    "load_mode": "replace",
+    "description": "PMP mensual del grupo municipal de Jerez. Fuente: transparencia.jerez.es.",
+    "status": "active",
+    "params": {
+      "url_template": "https://transparencia.jerez.es/fileadmin/Documentos/Transparencia/a-infopublica/a07-economica/c-deuda/{year}/pmp/Informe_PMP_{year}_{month}.xlsx",
+      "year_from": "2024",
+      "year_to": "2026",
+      "granularity": "monthly",
+      "format": "xlsx",
+      "sheet": "Detalle",
+      "skip_rows": "12",
+      "column_map": "codigo_de_entidad=codigo_entidad,entidad=entidad,periodo_medio_de_pago_mensual=pmp_dias,_year=ejercicio,_month=mes",
+      "keep_columns": "codigo_entidad,entidad,pmp_dias,ejercicio,mes",
+      "filter_nonempty": "entidad,pmp_dias",
+      "url_segments": "[{\"discovery_url_template\": \"https://transparencia.jerez.es/infopublica/economica/deuda/{year}\", \"link_base_url\": \"https://transparencia.jerez.es\", \"year_from\": 2021, \"year_to\": 2026, \"granularity\": \"annual\", \"sheet\": \"Detalle\", \"skip_rows\": 12, \"column_map\": \"codigo_de_entidad=codigo_entidad,entidad=entidad,periodo_medio_de_pago_mensual=pmp_dias,_year=ejercicio\", \"keep_columns\": \"codigo_entidad,entidad,pmp_dias,ejercicio\", \"filter_nonempty\": \"entidad,pmp_dias\"}]"
+    }
+  },
+  {
+    "name": "Jerez - Ejecución Presupuestaria Gastos",
+    "fetcher_name": "FILE_SERIES",
+    "publisher_acronimo": "AJFRA",
+    "target_table": "jerez_ejecucion_gastos",
+    "load_mode": "append",
+    "description": "Snapshots mensuales de ejecución de gastos por aplicación presupuestaria. Múltiples ficheros XLSX/XLS por ejercicio (un fichero ≈ un snapshot), 2020-2026.",
+    "status": "active",
+    "params": {
+      "discovery_url_template": "https://transparencia.jerez.es/infopublica/economica/presupuesto/{year}",
+      "link_pattern": "href=\"([^\"]+Estado_Ejecucion_Gastos[^\"]*\\.xls[x]?)\"",
+      "link_base_url": "https://transparencia.jerez.es",
+      "year_from": "2020",
+      "year_to": "2026",
+      "granularity": "annual",
+      "skip_rows": "6"
+    }
+  },
+  {
+    "name": "Jerez - Ejecución Presupuestaria Ingresos",
+    "fetcher_name": "FILE_SERIES",
+    "publisher_acronimo": "AJFRA",
+    "target_table": "jerez_ejecucion_ingresos",
+    "load_mode": "append",
+    "description": "Snapshots mensuales de ejecución de ingresos por aplicación presupuestaria. Múltiples ficheros XLSX/XLS por ejercicio, 2020-2026.",
+    "status": "active",
+    "params": {
+      "discovery_url_template": "https://transparencia.jerez.es/infopublica/economica/presupuesto/{year}",
+      "link_pattern": "href=\"([^\"]+Estado_Ejecucion_Ingresos[^\"]*\\.xls[x]?)\"",
+      "link_base_url": "https://transparencia.jerez.es",
+      "year_from": "2020",
+      "year_to": "2026",
+      "granularity": "annual",
+      "skip_rows": "6"
+    }
+  },
+  {
+    "name": "Jerez - Coste Efectivo de Servicios (CESEL)",
+    "fetcher_name": "FILE_SERIES",
+    "publisher_acronimo": "AJFRA",
+    "target_table": "jerez_cesel",
+    "load_mode": "replace",
+    "description": "Informe CESEL anual: coste efectivo por servicio municipal. XLSX disponibles 2014-2021; 2022+ solo PDF (pendiente PDF_TABLE).",
+    "status": "active",
+    "params": {
+      "url_template": "https://transparencia.jerez.es/fileadmin/Documentos/Transparencia/a-infopublica/a07-economica/e-otrainfo/costeservicios/CESEL-{year}.xlsx",
+      "year_from": "2014",
+      "year_to": "2021",
+      "granularity": "annual",
+      "format": "xlsx",
+      "skip_rows": "11",
+      "column_map": "_year=ejercicio",
+      "filter_nonempty": "idinforme"
+    }
+  },
+  {
+    "name": "Jerez - Deuda Financiera",
+    "fetcher_name": "FILE_SERIES",
+    "publisher_acronimo": "AJFRA",
+    "target_table": "jerez_deuda_financiera",
+    "load_mode": "replace",
+    "description": "Estado de la deuda financiera a 31/12 por acreedor. XLSX disponible en 2024; años anteriores solo PDF (pendiente PDF_TABLE).",
+    "status": "active",
+    "params": {
+      "discovery_url_template": "https://transparencia.jerez.es/infopublica/economica/deuda/{year}",
+      "link_pattern": "href=\"([^\"]+Deuda_a[^\"]*\\.xlsx)\"",
+      "link_base_url": "https://transparencia.jerez.es",
+      "year_from": "2021",
+      "year_to": "2026",
+      "granularity": "annual",
+      "column_map": "_year=ejercicio"
+    }
+  },
+  {
+    "name": "Jerez - Morosidad Trimestral (Ley 15/2010)",
+    "fetcher_name": "FILE_SERIES",
+    "publisher_acronimo": "AJFRA",
+    "target_table": "jerez_morosidad_trimestral",
+    "load_mode": "replace",
+    "description": "Informes trimestrales Ley 15/2010: PMP, pagos dentro/fuera de plazo, facturas pendientes. XLSX disponible en 2021; 2022+ solo PDF (pendiente PDF_TABLE).",
+    "status": "active",
+    "params": {
+      "discovery_url_template": "https://transparencia.jerez.es/infopublica/economica/deuda/{year}",
+      "link_pattern": "href=\"([^\"]+(?:trimestre|morosidad)[^\"]*\\.xlsx)\"",
+      "link_base_url": "https://transparencia.jerez.es",
+      "year_from": "2021",
+      "year_to": "2026",
+      "granularity": "annual",
+      "column_map": "_year=ejercicio"
+    }
+  },
+  {
+    "name": "Jerez - Cuenta General (rendiciondecuentas.es)",
+    "fetcher_name": "HTML_TABLE",
+    "publisher_acronimo": "AJFRA",
+    "target_table": "jerez_cuenta_general",
+    "load_mode": "replace",
+    "description": "44 KPIs de sostenibilidad financiera (CREPA, RT, IndFinYPatri) desde rendiciondecuentas.es. Granularidad anual desde 2016.",
+    "status": "pending_fetcher",
+    "notes": "Requiere fetcher HTML_TABLE en ODM (pendiente de implementación). Alternativamente usar REST_FETCHER si se descubre un endpoint JSON no documentado.",
+    "params": {
+      "base_url": "https://www.rendiciondecuentas.es/es/informaciongeneral/indicadores/",
+      "year_from": "2016",
+      "year_to": "2024",
+      "granularity": "annual"
+    }
+  },
+  {
+    "name": "Hacienda - CONPREL Liquidaciones Municipales",
+    "fetcher_name": "FILE_SERIES",
+    "publisher_acronimo": "MHAP",
+    "target_table": "nacional_conprel",
+    "load_mode": "replace",
+    "description": "Liquidaciones presupuestarias de todos los municipios españoles. Fuente: serviciostelematicos.minhap.es/SICGAL.",
+    "status": "pending_fetcher",
+    "notes": "La URL exacta de descarga de XLSX por año requiere verificación. Publisher MHAP debe existir en ODM.",
+    "params": {
+      "year_from": "2010",
+      "year_to": "2024",
+      "granularity": "annual"
+    }
+  }
+]

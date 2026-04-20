@@ -199,7 +199,7 @@ MUNICIPAL_SPAIN_FUNC_MODEL: CubeModel = {
 # ═══════════════════════════════════════════════════════════════════════════════
 # CUBO 3 — jerez-detail
 # Solo Jerez, capítulo económico, snapshots mensuales 2020-2026
-# Fuente: JerezBudget (budget_lines de transparencia.jerez.es)
+# Fuente: CityDashboard (budget_lines de transparencia.jerez.es)
 # ═══════════════════════════════════════════════════════════════════════════════
 
 JEREZ_DETAIL_MODEL: CubeModel = {

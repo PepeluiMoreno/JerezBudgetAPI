@@ -249,14 +249,14 @@ def rebuild_peer_groups():
     Se encadena automáticamente tras seed_ine_population.
     """
     from app.db import AsyncSessionLocal
-    from services.peer_groups import rebuild_dynamic_peer_groups, ensure_jerez_in_all_groups
+    from services.peer_groups import rebuild_dynamic_peer_groups, ensure_city_in_all_groups
 
     async def _rebuild():
         from app.db import engine
         await engine.dispose()   # libera conexiones del loop anterior
         async with AsyncSessionLocal() as db:
             stats = await rebuild_dynamic_peer_groups(db)
-            await ensure_jerez_in_all_groups(db)
+            await ensure_city_in_all_groups(db)
             await db.commit()
             return stats
 

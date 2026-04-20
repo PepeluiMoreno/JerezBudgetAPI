@@ -1,6 +1,6 @@
 """
-Modelos ORM — JerezBudget API
-Representan el esquema presupuestario del Ayuntamiento de Jerez.
+Modelos ORM — CityDashboard
+Representan el esquema presupuestario del municipio propio (ciudad home).
 
 Convención de nomenclatura:
   - Tablas en snake_case plural
@@ -432,3 +432,66 @@ class RigorMetrics(Base):
     def __repr__(self) -> str:
         score = f"{self.global_rigor_score:.1f}" if self.global_rigor_score else "N/A"
         return f"<RigorMetrics year={self.fiscal_year_id} score={score}>"
+
+
+# ── 7. ENTIDADES MUNICIPALES ─────────────────────────────────────────────────
+
+class MunicipalEntity(Base):
+    """
+    Catálogo de entidades que forman la corporación municipal de una ciudad.
+
+    Incluye el ayuntamiento, organismos autónomos, empresas municipales,
+    fundaciones, consorcios y el registro consolidado del grupo.
+
+    Diseño genérico: no hay nombres de empresa hardcodeados. La tabla se puebla
+    por municipio (ine_code) vía seed_entities.py desde rendiciondecuentas.es.
+
+    alias_fuentes almacena el texto exacto con el que cada fuente de datos externa
+    (PDFs de PMP, CESEL XLSX…) identifica a esta entidad, permitiendo la resolución
+    nombre→NIF sin lógica específica por ciudad.
+    """
+    __tablename__ = "municipal_entities"
+    __table_args__ = (
+        Index("ix_municipal_entities_ine_code", "ine_code"),
+        Index("ix_municipal_entities_parent_nif", "parent_nif"),
+    )
+
+    nif: Mapped[str] = mapped_column(String(20), primary_key=True,
+        comment="NIF fiscal real (P..., Q...) o sintético G{ine_code}0 para grupo consolidado")
+    nombre: Mapped[str] = mapped_column(String(300), nullable=False)
+    nombre_corto: Mapped[str] = mapped_column(String(60), nullable=False,
+        comment="Siglas o nombre abreviado para uso en UI")
+    tipo: Mapped[str] = mapped_column(String(20), nullable=False,
+        comment="ayto | opa | empresa | fundacion | consorcio | grupo")
+    parent_nif: Mapped[Optional[str]] = mapped_column(String(20),
+        ForeignKey("municipal_entities.nif", ondelete="SET NULL"), nullable=True,
+        comment="NIF del ayuntamiento cabecera al que pertenece esta entidad")
+    ine_code: Mapped[str] = mapped_column(String(10), nullable=False,
+        comment="Código INE del municipio (5 dígitos, ej: 11020)")
+    id_rendicion: Mapped[Optional[int]] = mapped_column(Integer, nullable=True,
+        comment="ID de la entidad en rendiciondecuentas.es — permite scraper CG automático")
+    activo: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False,
+        comment="False = entidad disuelta; se conserva el histórico")
+    alias_fuentes: Mapped[Optional[str]] = mapped_column(Text, nullable=True,
+        comment=(
+            'JSON: {"pmp_pdf": "texto en el PDF", "cesel": "nombre en XLSX", …} '
+            "— mapea el texto literal de cada fuente al NIF de esta entidad"
+        ))
+
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    def alias(self, fuente: str) -> Optional[str]:
+        """Devuelve el nombre de esta entidad en la fuente indicada, o None."""
+        import json
+        if not self.alias_fuentes:
+            return None
+        try:
+            return json.loads(self.alias_fuentes).get(fuente)
+        except (ValueError, TypeError):
+            return None
+
+    def __repr__(self) -> str:
+        return f"<MunicipalEntity {self.nif} {self.nombre_corto} ({self.tipo})>"

@@ -269,8 +269,8 @@ def _build_descriptor(
         "currency": "EUR",
         "countryCode": "ES",
         "publisher": {
-            "name": "JerezBudget API — civic tech",
-            "web": "https://github.com/PepeluiMoreno/JerezBudgetAPI",
+            "name": "CityDashboard — civic tech",
+            "web": "https://github.com/PepeluiMoreno/CityDashboard",
         },
         "license": {
             "type": "odc-pddl",

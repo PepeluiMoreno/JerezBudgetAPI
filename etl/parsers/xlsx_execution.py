@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Optional
 
 import openpyxl
+import xlrd
 import structlog
 
 logger = structlog.get_logger(__name__)
@@ -80,6 +81,9 @@ _COL_ALIASES: dict[str, str] = {
     "previsiones definitivas":        "final_forecast",
     "previsión definitiva":           "final_forecast",
     "prevision definitiva":           "final_forecast",
+    "previsiones totales":            "final_forecast",
+    "previsión total":                "final_forecast",
+    "prevision total":                "final_forecast",
     "derechos reconocidos netos":     "recognized_rights",
     "derechos rec. netos":            "recognized_rights",
     "derechos reconocidos":           "recognized_rights",
@@ -104,6 +108,37 @@ _NUMERIC_FIELDS = _EXPENSE_FIELDS | _REVENUE_FIELDS
 
 # Patrón para códigos presupuestarios: secuencia de dígitos (y alguna letra)
 _CODE_PATTERN = re.compile(r"^\d[\d.]*$")
+
+
+class _XlrdCell:
+    """Imita la API de openpyxl Cell para xlrd (indexación 1-based → 0-based)."""
+    __slots__ = ("value",)
+    def __init__(self, v): self.value = v
+
+
+class _XlrdSheetWrapper:
+    """Envuelve un xlrd.Sheet con la API mínima que usa parse_execution_xlsx."""
+
+    def __init__(self, sheet: "xlrd.sheet.Sheet"):
+        self._s = sheet
+
+    @property
+    def max_row(self) -> int:
+        return self._s.nrows
+
+    @property
+    def max_column(self) -> int:
+        return self._s.ncols
+
+    def cell(self, row: int, column: int) -> _XlrdCell:
+        try:
+            v = self._s.cell_value(row - 1, column - 1)
+            # xlrd devuelve 0.0 para celdas vacías numéricas; convertir a None si es cadena vacía
+            if v == "" or v is None:
+                return _XlrdCell(None)
+            return _XlrdCell(v)
+        except IndexError:
+            return _XlrdCell(None)
 
 
 @dataclass
@@ -263,16 +298,19 @@ def parse_execution_xlsx(path: Path, hint_direction: Optional[str] = None) -> Pa
     result = ParseResult()
 
     try:
-        wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+        if path.suffix.lower() == ".xls":
+            xls_wb = xlrd.open_workbook(str(path))
+            ws = _XlrdSheetWrapper(xls_wb.sheet_by_index(0))
+            wb = None
+        else:
+            wb = openpyxl.load_workbook(path, read_only=True, data_only=True)
+            ws = wb.active
+            if ws is None:
+                ws = wb.worksheets[0]
     except Exception as e:
         logger.error("xlsx_open_error", path=str(path), error=str(e))
         result.warnings.append(f"No se pudo abrir el fichero: {e}")
         return result
-
-    # Usar primera hoja (o la que contenga datos presupuestarios)
-    ws = wb.active
-    if ws is None:
-        ws = wb.worksheets[0]
 
     # Detectar cabecera
     header_row = _find_header_row(ws)
@@ -280,7 +318,7 @@ def parse_execution_xlsx(path: Path, hint_direction: Optional[str] = None) -> Pa
         msg = f"No se encontró fila de cabecera en {path.name}"
         logger.warning("no_header_found", path=str(path))
         result.warnings.append(msg)
-        wb.close()
+        if wb: wb.close()
         return result
 
     result.header_row = header_row
@@ -289,7 +327,7 @@ def parse_execution_xlsx(path: Path, hint_direction: Optional[str] = None) -> Pa
 
     if not col_map:
         result.warnings.append("No se pudieron mapear columnas de la cabecera")
-        wb.close()
+        if wb: wb.close()
         return result
 
     direction = hint_direction or _detect_direction(col_map)
@@ -361,7 +399,7 @@ def parse_execution_xlsx(path: Path, hint_direction: Optional[str] = None) -> Pa
         result.lines.append(line)
         result.total_rows_read += 1
 
-    wb.close()
+    if wb: wb.close()
 
     logger.info(
         "xlsx_parse_done",

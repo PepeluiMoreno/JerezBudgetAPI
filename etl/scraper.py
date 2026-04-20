@@ -81,11 +81,11 @@ _MOD_REF = re.compile(r"T(\d{3})[-/](\d{4})", re.I)
 
 def _detect_file_type(label: str, filename: str, ext: str) -> FileType:
     text = f"{label} {filename}"
-    if ext == ".xlsx":
+    if ext in (".xlsx", ".xls"):
         for ftype, pat in _PATTERNS[:2]:
             if pat.search(text):
                 return ftype
-        return FileType.EXECUTION_EXPENSES  # xlsx por defecto
+        return FileType.EXECUTION_EXPENSES  # hoja de cálculo por defecto
     for ftype, pat in _PATTERNS:
         if pat.search(text):
             return ftype
@@ -155,7 +155,7 @@ class TransparenciaScraper:
         for a_tag in soup.find_all("a", href=True):
             href: str = a_tag["href"]
             ext = Path(href).suffix.lower()
-            if ext not in (".xlsx", ".pdf"):
+            if ext not in (".xlsx", ".xls", ".pdf"):
                 continue
 
             full_url = urljoin(self.base_url, href)
@@ -168,7 +168,7 @@ class TransparenciaScraper:
             combined_label = f"{label} {parent_text}"
 
             ftype = _detect_file_type(combined_label, filename, ext)
-            snap_date = _extract_snapshot_date(filename, fiscal_year) if ext == ".xlsx" else None
+            snap_date = _extract_snapshot_date(filename, fiscal_year) if ext in (".xlsx", ".xls") else None
             mod_ref = _extract_mod_ref(combined_label, filename) if ftype == FileType.MODIFICATION else None
 
             discovered.append(DiscoveredFile(

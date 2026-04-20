@@ -9,7 +9,7 @@ from typing import Optional
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from graphql.types import ModificationsSummaryType, RigorTrendPointType
+from gql.types import ModificationsSummaryType, RigorTrendPointType
 from models.budget import (
     BudgetLine,
     BudgetModification,

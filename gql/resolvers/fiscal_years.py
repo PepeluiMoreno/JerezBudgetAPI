@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from graphql.types import FiscalYearType
+from gql.types import FiscalYearType
 from models.budget import FiscalYear
 
 

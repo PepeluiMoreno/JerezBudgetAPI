@@ -10,7 +10,7 @@ from app.config import get_settings
 settings = get_settings()
 
 celery_app = Celery(
-    "jerezbudget",
+    "citydashboard",
     broker=settings.redis_url,
     backend=settings.redis_url,
     include=["tasks.etl_tasks", "tasks.conprel_tasks", "tasks.cuenta_general_tasks"],
@@ -34,7 +34,7 @@ celery_app.conf.update(
 
     # Rutas de colas
     task_routes={
-        # Capa 1 — JerezBudget
+        # Capa 1 — CityDashboard (presupuesto propio)
         "tasks.etl_tasks.discover_and_ingest":            {"queue": "etl"},
         "tasks.etl_tasks.ingest_file":                    {"queue": "etl"},
         "tasks.etl_tasks.compute_metrics":                {"queue": "metrics"},

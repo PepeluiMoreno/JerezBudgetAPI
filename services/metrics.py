@@ -22,7 +22,7 @@ from decimal import Decimal, ROUND_HALF_UP
 from typing import Optional
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from models.budget import (
@@ -88,7 +88,7 @@ class RigorMetricsService:
         snap_result = await self.db.execute(
             select(BudgetSnapshot)
             .where(BudgetSnapshot.fiscal_year_id == fy.id)
-            .where(BudgetSnapshot.phase == "executed")
+            .where(BudgetSnapshot.phase == "executed_expense")
             .order_by(BudgetSnapshot.snapshot_date.desc())
             .limit(1)
         )
@@ -120,18 +120,37 @@ class RigorMetricsService:
         total_mods       = sum(_d(r.modifications) for r in chapters)
 
         # ── B) Ejecución de ingresos ──────────────────────────────────────────
-        rev_result = await self.db.execute(
-            select(
-                func.sum(BudgetLine.final_forecast).label("final_fc"),
-                func.sum(BudgetLine.recognized_rights).label("rights"),
-            )
-            .join(BudgetLine.economic)
-            .where(BudgetLine.snapshot_id == snapshot.id)
-            .where(EconomicClassification.direction == "revenue")
+        # Los ingresos están en snapshots de phase=executed_revenue (fichero aparte)
+        rev_snap_result = await self.db.execute(
+            select(BudgetSnapshot)
+            .where(BudgetSnapshot.fiscal_year_id == fy.id)
+            .where(BudgetSnapshot.phase == "executed_revenue")
+            .order_by(BudgetSnapshot.snapshot_date.desc())
+            .limit(1)
         )
-        rev = rev_result.one()
-        total_final_fc = _d(rev.final_fc)
-        total_rights   = _d(rev.rights)
+        rev_snapshot = rev_snap_result.scalar_one_or_none()
+
+        if rev_snapshot:
+            # final_forecast puede ser NULL en XLS más antiguos; reconstruir como ini + mods
+            _eff_final_fc = func.coalesce(
+                BudgetLine.final_forecast,
+                BudgetLine.initial_forecast + func.coalesce(BudgetLine.modifications, 0),
+            )
+            rev_result = await self.db.execute(
+                select(
+                    func.sum(_eff_final_fc).label("final_fc"),
+                    func.sum(BudgetLine.recognized_rights).label("rights"),
+                )
+                .join(BudgetLine.economic)
+                .where(BudgetLine.snapshot_id == rev_snapshot.id)
+                .where(EconomicClassification.direction == "revenue")
+            )
+            rev = rev_result.one()
+            total_final_fc = _d(rev.final_fc)
+            total_rights   = _d(rev.rights)
+        else:
+            total_final_fc = Decimal("0")
+            total_rights   = Decimal("0")
 
         # ── C) Modificaciones ─────────────────────────────────────────────────
         mods_result = await self.db.execute(
@@ -254,6 +273,11 @@ class RigorMetricsService:
             }
 
         # ── K) Persistir ──────────────────────────────────────────────────────
+        # Borrar métricas anteriores del ejercicio para evitar duplicados
+        await self.db.execute(
+            delete(RigorMetrics).where(RigorMetrics.fiscal_year_id == fy.id)
+        )
+
         metrics = RigorMetrics(
             fiscal_year_id=fy.id,
             snapshot_id=snapshot.id,
