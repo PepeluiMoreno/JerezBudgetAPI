@@ -18,6 +18,9 @@ from gql.types import (
     BudgetLinePage,
     BudgetModificationType,
     BudgetSnapshotType,
+    ConprelChapterPoint,
+    ConprelComparativaType,
+    ConprelMunicipalRow,
     CuentaGeneralKpiType,
     DeviationAnalysisType,
     EtlValidationExceptionType,
@@ -28,6 +31,7 @@ from gql.types import (
     ModificationsSummaryType,
     DeudaAnualPoint,
     MorosidadTrimPoint,
+    PeerGroupType,
     PmpAnualPoint,
     PmpMensualPoint,
     RecaudacionChapterType,
@@ -68,6 +72,10 @@ from gql.resolvers.recaudacion import (
     resolve_recaudacion_kpis,
     resolve_recaudacion_trend,
     resolve_recaudacion_concept_trend,
+)
+from gql.resolvers.comparativa import (
+    resolve_peer_groups,
+    resolve_conprel_comparativa,
 )
 
 
@@ -405,6 +413,48 @@ class Query:
     ) -> list[MorosidadTrimPoint]:
         db: AsyncSession = info.context["db"]
         return await resolve_morosidad_trimestral(db, year, ine_code)
+
+    # ── S12: Comparativa CONPREL ────────────────────────────────────────────────
+
+    @strawberry.field(description="Lista de grupos de pares disponibles con conteo de miembros.")
+    async def peer_groups(self, info: strawberry.types.Info) -> list[PeerGroupType]:
+        db: AsyncSession = info.context["db"]
+        rows = await resolve_peer_groups(db)
+        return [PeerGroupType(**r) for r in rows]
+
+    @strawberry.field(
+        description=(
+            "Liquidaciones CONPREL de todos los municipios de un grupo de pares. "
+            "fiscal_year: None = año más reciente disponible. "
+            "data_type: 'liquidation' (por defecto) | 'budget'."
+        )
+    )
+    async def conprel_comparativa(
+        self,
+        info: strawberry.types.Info,
+        peer_group_slug: str,
+        fiscal_year: Optional[int] = None,
+        data_type: str = "liquidation",
+    ) -> Optional[ConprelComparativaType]:
+        db: AsyncSession = info.context["db"]
+        d = await resolve_conprel_comparativa(db, peer_group_slug, fiscal_year, data_type)
+        if d is None:
+            return None
+        rows = [
+            ConprelMunicipalRow(
+                **{k: v for k, v in r.items() if k != "chapters"},
+                chapters=[ConprelChapterPoint(**c) for c in r["chapters"]],
+            )
+            for r in d["rows"]
+        ]
+        return ConprelComparativaType(
+            peer_group_slug=d["peer_group_slug"],
+            peer_group_name=d["peer_group_name"],
+            fiscal_year=d["fiscal_year"],
+            data_type=d["data_type"],
+            available_years=d["available_years"],
+            rows=rows,
+        )
 
     @strawberry.field(
         description=(

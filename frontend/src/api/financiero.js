@@ -383,3 +383,59 @@ export async function fetchMorosidadTrimestral(year = null, ineCode = null) {
   const data = await gqlClient.request(MOROSIDAD_TRIMESTRAL_QUERY, { year, ineCode })
   return data.morosidadTrimestral
 }
+
+// ── S12: Comparativa CONPREL ──────────────────────────────────────────────────
+
+const PEER_GROUPS_QUERY = gql`
+  query PeerGroups {
+    peerGroups {
+      id
+      slug
+      name
+      description
+      memberCount
+    }
+  }
+`
+
+const CONPREL_COMPARATIVA_QUERY = gql`
+  query ConprelComparativa($peerGroupSlug: String!, $fiscalYear: Int, $dataType: String) {
+    conprelComparativa(peerGroupSlug: $peerGroupSlug, fiscalYear: $fiscalYear, dataType: $dataType) {
+      peerGroupSlug
+      peerGroupName
+      fiscalYear
+      dataType
+      availableYears
+      rows {
+        ineCode
+        name
+        population
+        isCity
+        totalExpenseExecuted
+        totalRevenueExecuted
+        expenseExecutedPerCapita
+        revenueExecutedPerCapita
+        expenseExecutionRate
+        revenueExecutionRate
+        rankExpensePerCapita
+        chapters {
+          chapter
+          direction
+          executedAmount
+          executedPerCapita
+          executionRate
+        }
+      }
+    }
+  }
+`
+
+export async function fetchPeerGroups() {
+  const data = await gqlClient.request(PEER_GROUPS_QUERY)
+  return data.peerGroups
+}
+
+export async function fetchConprelComparativa(peerGroupSlug, fiscalYear = null, dataType = 'liquidation') {
+  const data = await gqlClient.request(CONPREL_COMPARATIVA_QUERY, { peerGroupSlug, fiscalYear, dataType })
+  return data.conprelComparativa
+}

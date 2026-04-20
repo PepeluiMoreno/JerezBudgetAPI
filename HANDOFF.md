@@ -190,12 +190,12 @@ place_contratos           ← contratos PLACE/PCSP (ETL API contrataciondelestad
 - Editor de KPIs composables desde estadísticas disponibles
 
 ### S15 — Secciones Subvenciones + Contratación Pública
-- ETL BDNS (API infosubvenciones.es)
-- ETL PLACE (API contrataciondelestado.es)
+- Recursos BDNS de ODM filtrados por municipio
 - Vistas correspondientes con comparativa nacional
 
 ### S16 — Sección Planes, Convenios y Proyectos
-- Pendiente definir fuente de datos
+- Portal de Transparecia Ayuntamiento
+
 
 ---
 

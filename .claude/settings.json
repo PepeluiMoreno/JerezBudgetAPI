@@ -1,0 +1,27 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(poetry --version)",
+      "Bash(2>&1)",
+      "Bash(curl -s \"http://localhost:8015/api/3/cubes/\")",
+      "Bash(curl -s \"http://localhost:8015/api/3/cubes/jerez-rigor/aggregate?drilldown=year.fiscal_year&pagesize=10\")",
+      "Bash(grep -l \"class.*Fetcher\" /opt/docker/apps/opendatamanager/app/fetchers/*.py)",
+      "WebFetch(domain:datos.gob.es)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' https://www.rendiciondecuentas.es__TRACKED_VAR__)",
+      "Bash(curl -sb /tmp/rdc_session -L https://www.rendiciondecuentas.es/es/consultadeentidadesycuentas/buscarCuentas/consultarCuenta.html --data 'option=vc&nombreEntidad=Ayuntamiento+Jerez+de+la+Frontera&idTipoEntidad=A&idModelo=3&idEntidadPpal=1779&idEntidad=1779&ejercicio=2022&nifEntidad=P1102000E&dd=true' -o /tmp/rdc_vc.html -w '%{http_code} %{url_effective} %{content_type}\\\\n')",
+      "Bash(mkdir -p /opt/docker/apps/JerezBudgetAPI/frontend/public)",
+      "Bash(curl -sL --max-time 10 https://static-1.ivoox.com/canales/0/2/8/7/5351511447820_XXL.jpg -o /opt/docker/apps/JerezBudgetAPI/frontend/public/ocm-logo.jpg)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(grep -n \"class Cuenta\\\\|class cuenta\\\\|CuentaGeneral\\\\|cuenta_general\" /opt/docker/apps/JerezBudgetAPI/models/*.py)",
+      "WebFetch(domain:transparencia.jerez.es)",
+      "Bash(pdftotext /tmp/morosidad_4T2024.pdf -)",
+      "Bash(curl -sL \"https://transparencia.jerez.es/fileadmin/Documentos/Transparencia/a-infopublica/a07-economica/c-deuda/2024/deuda/F.3.4-_Endeudamiento_a_efectos_PDE_Liquidacion_2024.pdf\" -o pde_2024.pdf)",
+      "Bash(pdftotext /tmp/pde_2024.pdf -)",
+      "Bash(grep -v \"^[[:space:]]*$\")",
+      "Bash(pdftotext /tmp/pmp_2023_12.pdf -)"
+    ],
+    "additionalDirectories": [
+      "/opt/docker/apps/opendatamanager"
+    ]
+  }
+}

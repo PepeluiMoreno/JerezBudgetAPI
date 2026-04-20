@@ -380,6 +380,52 @@ class MorosidadTrimPoint:
     ratio_fuera_plazo: Optional[float]   # derivado
 
 
+# ── S12: Comparativa CONPREL ──────────────────────────────────────────────────
+
+@strawberry.type
+class PeerGroupType:
+    id: int
+    slug: str
+    name: str
+    description: Optional[str]
+    member_count: int
+
+
+@strawberry.type
+class ConprelChapterPoint:
+    chapter: str                     # '1'–'9'
+    direction: str                   # 'expense' | 'revenue'
+    executed_amount: Optional[float]
+    executed_per_capita: Optional[float]
+    execution_rate: Optional[float]
+
+
+@strawberry.type
+class ConprelMunicipalRow:
+    ine_code: str
+    name: str
+    population: Optional[int]
+    is_city: bool                        # True = municipio configurado
+    total_expense_executed: Optional[float]
+    total_revenue_executed: Optional[float]
+    expense_executed_per_capita: Optional[float]
+    revenue_executed_per_capita: Optional[float]
+    expense_execution_rate: Optional[float]
+    revenue_execution_rate: Optional[float]
+    rank_expense_per_capita: Optional[int]
+    chapters: list[ConprelChapterPoint]
+
+
+@strawberry.type
+class ConprelComparativaType:
+    peer_group_slug: str
+    peer_group_name: str
+    fiscal_year: int
+    data_type: str
+    available_years: list[int]
+    rows: list[ConprelMunicipalRow]
+
+
 @strawberry.input
 class BudgetLineFilter:
     chapter: Optional[str] = strawberry.UNSET
